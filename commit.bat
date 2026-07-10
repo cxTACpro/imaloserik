@@ -1,11 +1,14 @@
 @echo off
-echo "📝 Committing changed files..."
+echo Committing and pushing to GitHub...
 
 git add -u
 git add -A
-if git diff --cached --quiet; then
-    echo "ℹ️ No changes to commit"
-else
-    git commit -m "Update changed files on $(date '+%Y-%m-%d %H:%M:%S')"
+
+git diff --cached --quiet
+if %errorlevel% equ 0 (
+    echo No changes to commit
+) else (
+    git commit -m "Update changed files on %date% %time%"
     git push origin main
-    echo "✅ Updated successfully!"
+    echo Pushed to GitHub successfully!
+)
