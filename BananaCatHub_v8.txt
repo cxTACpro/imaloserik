@@ -2568,7 +2568,7 @@ QuestNeta = function()
 		};
 	end;
 
-local Library = loadstring(game:HttpGet("http://192.168.109.1:8080/" .. (USE_WINDUI and "ui_tay_wind.lua" or "ui_tay.txt")))():MakeWindow({
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/refs/heads/main/" .. (USE_WINDUI and "ui_tay_wind.lua" or "ui_tay.txt")))():MakeWindow({
     Title = "Tac Hub",
     SubTitle = "by Tùng dz [Mod Ui by tac123]",
     SaveFolder = "Maça.json"

@@ -3,16 +3,8 @@
     Drop-in replacement for Tay UI – uses WindUI from local main.lua.
 ]]
 
--- Load WindUI (try local main.lua via readfile, then HTTP fallback)
-local loadSuccess, WindUI = pcall(function()
-    if type(readfile) == "function" and isfile and isfile("main.lua") then
-        return loadstring(readfile("main.lua"))()
-    end
-    return loadstring(game:HttpGet("http://192.168.109.1:8080/main.lua", true))()
-end)
-if not loadSuccess then
-    error("Failed to load WindUI: " .. tostring(WindUI))
-end
+-- Load WindUI (GitHub mirror)
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/refs/heads/main/main.lua", true))()
 
 -- Icon helpers
 local iconMap = {

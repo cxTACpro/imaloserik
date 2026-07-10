@@ -3,17 +3,8 @@
     Exact same redzlib API surface, powered by WindUI/main.lua internally.
 ]]
 
--- ── Load WindUI (local main.lua via readfile, then HTTP fallback) ──────────
-local WindUI = (function()
-    local ok, lib = pcall(function()
-        if type(readfile) == "function" and isfile and isfile("main.lua") then
-            return loadstring(readfile("main.lua"))()
-        end
-        return loadstring(game:HttpGet("http://192.168.109.1:8080/main.lua", true))()
-    end)
-    if not ok then error("Failed to load WindUI: " .. tostring(lib), 0) end
-    return lib
-end)()
+-- ── Load WindUI (GitHub mirror) ─────────────────────────────────────────────
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/refs/heads/main/main.lua", true))()
 
 -- ── Icon helpers ───────────────────────────────────────────────────────────
 local iconMap = {

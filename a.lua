@@ -1,4 +1,4 @@
-local module = loadstring(game:HttpGet("http://192.168.109.1:8080/FifaModule.lua"))()
+local module = loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/refs/heads/main/FifaModule.lua"))()
 local nextChest
 local notif = game:GetService("StarterGui")
 

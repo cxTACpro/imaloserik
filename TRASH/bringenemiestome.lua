@@ -1,4 +1,4 @@
-local FFM = loadstring(game:HttpGet("http://192.168.109.1:8081/FifaModule.lua"))()
+local FFM = loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/refs/heads/main/FifaModule.lua"))()
 FFM.VG.AntiAdonis()
 getgenv().jd = function()
         for _, enemy in pairs(game:GetService("Workspace").Enemies:GetChildren()) do
