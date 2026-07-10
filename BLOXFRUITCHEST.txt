@@ -1,0 +1,276 @@
+-- TrongNguyen Hub Auto Farm Chests + Server Hop
+
+local LocalPlayer = game:GetService("Players").LocalPlayer
+local Locations = workspace._WorldOrigin and workspace._WorldOrigin:FindFirstChild("Locations")
+
+-- Notification
+local notif = require(game:GetService("ReplicatedStorage").Notification)
+notif.new("<Color=Cyan>Welcome To : TrongNguyen Hub<Color/>"):Display()
+wait(0.5)
+repeat wait() until game.Players.LocalPlayer and game:IsLoaded()
+notif.new("<Color=Cyan>Script Auto Farm Chest Blox Fruit...!<Color/>"):Display()
+wait(0.5)
+repeat wait() until game.Players.LocalPlayer and game:IsLoaded()
+notif.new("<Color=Cyan>https://discord.gg/tdgmfxtUtW<Color/>"):Display()
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = game:GetService("CoreGui")
+
+local frame = Instance.new("Frame")
+frame.BackgroundColor3 = Color3.fromRGB(51, 52, 49)
+frame.BackgroundTransparency = 0.3
+frame.BorderSizePixel = 0
+frame.Position = UDim2.new(0.142634839, 0, 0.0200501252, 0)
+frame.Size = UDim2.new(0, 600, 0, 71)
+frame.Parent = gui
+
+local uicorner = Instance.new("UICorner")
+uicorner.CornerRadius = UDim.new(0, 5)
+uicorner.Parent = frame
+
+local title = Instance.new("TextLabel")
+title.Font = Enum.Font.FredokaOne
+title.Text = "TrongNguyen Hub Auto Farm Chests"
+title.TextColor3 = Color3.fromRGB(255, 238, 6)
+title.TextSize = 26
+title.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
+title.BackgroundTransparency = 1
+title.BorderSizePixel = 0
+title.Position = UDim2.new(0.25981009, 0, 0.115379117, 0)
+title.Size = UDim2.new(0, 335, 0, 27)
+title.Parent = frame
+
+local status = Instance.new("TextLabel")
+status.Font = Enum.Font.FredokaOne
+status.Text = "Status: Auto Farm Chest"
+status.TextColor3 = Color3.fromRGB(255, 255, 11)
+status.TextSize = 23
+status.BackgroundTransparency = 1
+status.BorderSizePixel = 0
+status.Position = UDim2.new(0.351223648, 0, 0.490965933, 0)
+status.Size = UDim2.new(0, 210, 0, 32)
+status.Parent = frame
+
+local uistroke = Instance.new("UIStroke")
+uistroke.Color = Color3.fromRGB(243, 255, 7)
+uistroke.Thickness = 3
+uistroke.Parent = frame
+
+-- Server Hop System (from garbage.luau)
+local PlaceID = game.PlaceId
+local AllIDs = {}
+local foundAnything = ""
+local actualHour = os.date("!*t").hour
+
+local FileSuccess = pcall(function()
+	AllIDs = game:GetService('HttpService'):JSONDecode(readfile("NotSameServers.json"))
+end)
+if not FileSuccess then
+	table.insert(AllIDs, actualHour)
+	writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
+end
+
+local function TPReturner()
+	local Site
+	if foundAnything == "" then
+		Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100'))
+	else
+		Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
+	end
+	local ID = ""
+	if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
+		foundAnything = Site.nextPageCursor
+	end
+	local num = 0
+	for i, v in pairs(Site.data) do
+		local Possible = true
+		ID = tostring(v.id)
+		if tonumber(v.maxPlayers) > tonumber(v.playing) then
+			for _, Existing in pairs(AllIDs) do
+				if num ~= 0 then
+					if ID == tostring(Existing) then
+						Possible = false
+					end
+				else
+					if tonumber(actualHour) ~= tonumber(Existing) then
+						local delFile = pcall(function()
+							delfile("NotSameServers.json")
+							AllIDs = {}
+							table.insert(AllIDs, actualHour)
+						end)
+					end
+				end
+				num = num + 1
+			end
+			if Possible == true then
+				table.insert(AllIDs, ID)
+				wait()
+				pcall(function()
+					writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
+					wait()
+					game:GetService("ReplicatedStorage"):WaitForChild("__ServerBrowser"):InvokeServer("teleport",ID)
+				end)
+				wait(3.7)
+			end
+		end
+	end
+end
+
+local function ServerHop()
+	task.spawn(function()
+		while task.wait() do
+			pcall(function()
+				TPReturner()
+				if foundAnything ~= "" then
+					TPReturner()
+				end
+			end)
+		end
+	end)
+end
+
+-- Security kick detection
+task.spawn(function()
+	while task.wait(0.5) do
+		pcall(function()
+			for i, v in pairs(game.CoreGui:GetDescendants()) do
+				pcall(function()
+					if string.find(v.Name, "ErrorMessage") then
+						if string.find(v.Text, "Security kick") then
+							ServerHop()
+						end
+					end
+				end)
+			end
+		end)
+	end
+end)
+
+-- Core Chest Farming
+local function getCharacter()
+	if not LocalPlayer.Character then
+		LocalPlayer.CharacterAdded:Wait()
+	end
+	LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+	return LocalPlayer.Character
+end
+
+local function DistanceFromPlrSort(ObjectList)
+	local RootPart = getCharacter().LowerTorso
+	table.sort(ObjectList, function(ChestA, ChestB)
+		local RootPos = RootPart.Position
+		local DistanceA = (RootPos - ChestA.Position).Magnitude
+		local DistanceB = (RootPos - ChestB.Position).Magnitude
+		return DistanceA < DistanceB
+	end)
+end
+
+local UncheckedChests, FirstRun = {}, true
+local function getChestsSorted()
+	if FirstRun then
+		FirstRun = false
+		for _, Object in pairs(game:GetDescendants()) do
+			if Object.Name:find("Chest") and Object.ClassName == "Part" then
+				table.insert(UncheckedChests, Object)
+			end
+		end
+	end
+	local Chests = {}
+	for _, Chest in pairs(UncheckedChests) do
+		if Chest:FindFirstChild("TouchInterest") then
+			table.insert(Chests, Chest)
+		end
+	end
+	DistanceFromPlrSort(Chests)
+	return Chests
+end
+
+local function toggleNoclip(Toggle)
+	for _, v in pairs(getCharacter():GetChildren()) do
+		if v:IsA("BasePart") then
+			v.CanCollide = not Toggle
+		end
+	end
+end
+
+local function Teleport(Goal)
+	local RootPart = getCharacter().HumanoidRootPart
+	toggleNoclip(true)
+	RootPart.CFrame = Goal + Vector3.new(0, 3, 0)
+	toggleNoclip(false)
+end
+
+local stopFarming = false
+
+local function checkForHolyGrail()
+	local holyGrailKeywords = {"fist", "grail", "darkness"}
+	if LocalPlayer.Character then
+		for _, child in pairs(LocalPlayer.Character:GetChildren()) do
+			for _, keyword in pairs(holyGrailKeywords) do
+				if child.Name:lower():find(keyword) then
+					stopFarming = true
+					return
+				end
+			end
+		end
+	end
+	if LocalPlayer.Backpack then
+		for _, child in pairs(LocalPlayer.Backpack:GetChildren()) do
+			for _, keyword in pairs(holyGrailKeywords) do
+				if child.Name:lower():find(keyword) then
+					stopFarming = true
+					return
+				end
+			end
+		end
+	end
+	stopFarming = false
+end
+
+local function startFarm()
+	task.spawn(function()
+		while task.wait() do
+			checkForHolyGrail()
+			if stopFarming then
+				status.Text = "Status: Holy Grail Found! Stopping."
+				break
+			end
+			local Chests = getChestsSorted()
+			if #Chests > 0 then
+				status.Text = "Status: Farming Chests"
+				Teleport(Chests[1].CFrame)
+			else
+				status.Text = "Status: No Chests - Server Hopping"
+				wait(1)
+				ServerHop()
+				break
+			end
+		end
+	end)
+end
+
+-- Set team to Marines
+task.spawn(function()
+	local rs = game:GetService("ReplicatedStorage")
+	while task.wait(5) do
+		pcall(function()
+			rs.Remotes.CommF_:InvokeServer("SetTeam", "Marines")
+		end)
+	end
+end)
+
+-- Also set Pirates as fallback
+task.spawn(function()
+	local args = {[1] = "SetTeam", [2] = "Pirates"}
+	game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args))
+end)
+
+-- Start farming on character load
+LocalPlayer.CharacterAdded:Connect(function()
+	task.wait(1)
+	startFarm()
+end)
+
+startFarm()

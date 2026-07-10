@@ -1,0 +1,180 @@
+-- https://lua.expert/
+local RunService = game:GetService("RunService")
+local v1 = RunService:IsServer()
+local v2 = pcall
+local v3 = nil
+local t = {}
+local v4 = nil
+local bxor = bit32.bxor
+local v5 = nil
+local Flags = require(game.ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Flags"))
+local v6 = if RunService:IsServer() and RunService:IsRunning() then require(game.ServerScriptService:WaitForChild("NetServer")) else nil
+local v7 = false
+
+if RunService:IsRunning() then
+	if v1 then
+		v4 = tostring(math.random(-9999999, 9999999))
+		function script.seed.OnServerInvoke() --[[ Line: 13 | Upvalues: v4 (ref) ]]
+			return v4
+		end
+	else
+		local v8, v9 = script.seed:InvokeServer()
+
+		v4 = v8
+		v7 = v9
+		function script.seed.OnClientInvoke(p1, p2) --[[ Line: 18 | Upvalues: v7 (ref), v4 (ref), v5 (ref) ]]
+			v7 = p1
+			v4 = p2
+			v5 = p2 * 2
+		end
+	end
+
+	v5 = v4 * 2
+end
+
+local v10 = require(script.netutil)()["1"]()
+
+if RunService:IsRunning() then
+	if RunService:IsServer() then
+		function v6.cb(p1) --[[ Line: 34 | Upvalues: v3 (ref) ]]
+			v3 = p1
+		end
+		v6.getname = v10
+		v6.set({
+			IDBASE = 909090,
+			key = v5,
+			seed = v4,
+			virtualEvents = t,
+			script = script
+		})
+	else
+		repeat
+			task.wait()
+			v2(function() --[[ Line: 41 | Upvalues: v3 (ref) ]]
+				v3 = (function() --[[ Line: 42 ]]
+					for k, v in pairs(script:GetChildren()) do
+						if v:GetAttribute("Id") ~= nil then
+							return v
+						end
+					end
+				end)()
+			end)
+		until v3
+
+		local ReplicatedStorage = game.ReplicatedStorage
+		local t2 = {
+			ReplicatedStorage.Util,
+			ReplicatedStorage.Remotes,
+			ReplicatedStorage.Assets,
+			ReplicatedStorage.Common,
+			ReplicatedStorage.FX
+		}
+
+		local function sp(p1) --[[ sp | Line: 52 | Upvalues: t2 (copy) ]]
+			p1.Parent = t2[math.random(#t2)]
+		end
+
+		v3.Parent = t2[math.random(#t2)]
+		script.ChildAdded:Connect(function(p1) --[[ Line: 56 | Upvalues: v3 (ref), t2 (copy) ]]
+			if not p1:GetAttribute("Id") then
+				return
+			end
+
+			v3 = p1
+			task.defer(function() --[[ Line: 59 | Upvalues: v3 (ref), t2 (ref) ]]
+				v3.Parent = t2[math.random(#t2)]
+			end)
+		end)
+	end
+end
+
+local function f11(p1) --[[ Line: 68 | Upvalues: t (copy), v6 (copy), v7 (ref), v3 (ref), v10 (copy), v5 (ref), bxor (copy) ]]
+	if t[p1] then
+		return t[p1]
+	end
+
+	local v1 = script:WaitForChild(p1, 99)
+	local t2 = {
+		__OnServerEvent = {},
+		__OnClientEvent = {}
+	}
+
+	t2.OnServerEvent = {
+		Connect = function(p1, p2) --[[ Connect | Line: 74 | Upvalues: t2 (copy), v6 (ref), v1 (copy) ]]
+			table.insert(t2.__OnServerEvent, p2)
+			v6.connectOrganic(v1, p2)
+		end
+	}
+	t2.OnClientEvent = {
+		Connect = function(p1, p2) --[[ Connect | Line: 80 | Upvalues: v1 (copy) ]]
+			v1.OnClientEvent:Connect(function(...) --[[ Line: 82 | Upvalues: p2 (copy) ]]
+				p2(...)
+			end)
+		end
+	}
+	assert((("failed to find event %*"):format(p1)))
+	function t2.FireServer(p12, ...) --[[ Line: 89 | Upvalues: v7 (ref), v3 (ref), v10 (ref), p1 (copy), v5 (ref), bxor (ref), v1 (copy) ]]
+		if v7 then
+			v3:FireServer(v10(p1), bxor(v3:GetAttribute("Id") + 909090, v5), ...)
+		else
+			v1:FireServer(...)
+		end
+	end
+	function t2.FireClient(p1, p2, ...) --[[ Line: 96 | Upvalues: v1 (copy) ]]
+		v1:FireClient(p2, ...)
+	end
+	function t2.FireAllClients(p1, ...) --[[ Line: 99 | Upvalues: v1 (copy) ]]
+		v1:FireAllClients(...)
+	end
+	t[p1] = t2
+
+	return t2
+end
+
+local function get(p1, p2, p3) --[[ get | Line: 107 | Upvalues: RunService (copy), Flags (copy), f11 (copy) ]]
+	local v2 = (if p2 == "RemoteEvent" then "RE/" else "RF/") .. p1
+
+	if RunService:IsServer() or not RunService:IsRunning() then
+		local v3 = script:FindFirstChild(v2)
+
+		if not v3 then
+			local v4 = Instance.new(p2)
+
+			v4.Name = v2
+			v4.Parent = script
+
+			if p3 and Flags.ALLOW_VIRTUAL_REMOTES then
+				v4:SetAttribute("Virtual", true)
+			end
+
+			v3 = v4
+		end
+
+		if v3:GetAttribute("Virtual") and Flags.ALLOW_VIRTUAL_REMOTES then
+			return f11(v2)
+		end
+
+		return v3
+	end
+
+	local v5 = script:WaitForChild(v2, 99)
+
+	if not v5 then
+		error(string.format("Failed to find %s: %s", p2, v2))
+	end
+
+	if v5:GetAttribute("Virtual") and Flags.ALLOW_VIRTUAL_REMOTES then
+		return f11(v2)
+	end
+
+	return v5
+end
+
+return {
+	RemoteEvent = function(p1, p2, p3) --[[ RemoteEvent | Line: 158 | Upvalues: get (copy) ]]
+		return get(p2, "RemoteEvent", p3)
+	end,
+	RemoteFunction = function(p1, p2) --[[ RemoteFunction | Line: 162 | Upvalues: get (copy) ]]
+		return get(p2, "RemoteFunction")
+	end
+}

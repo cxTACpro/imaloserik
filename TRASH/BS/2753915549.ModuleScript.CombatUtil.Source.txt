@@ -1,0 +1,1740 @@
+local script = game:GetService("ReplicatedStorage"):WaitForChild("Modules"):WaitForChild("CombatUtil")
+-- https://lua.expert/
+game:GetService("ReplicatedStorage")
+
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+require(game.ReplicatedStorage.Modules.AnimationUtil)
+
+local WeaponData = require(game.ReplicatedStorage.Modules.WeaponData)
+local Flags = require(game.ReplicatedStorage.Modules.Flags)
+local Net = require(game.ReplicatedStorage.Modules.Net)
+local GetBoundingBoxCustom = require(game.ReplicatedStorage.Modules.Part.GetBoundingBoxCustom)
+local GetCornersOfPart = require(game.ReplicatedStorage.Modules.Part.GetCornersOfPart)
+local t = {}
+local LocalPlayer = game.Players.LocalPlayer
+local Enemies = workspace.Enemies
+local Characters = workspace.Characters
+local WrapHighlight = require(game.ReplicatedStorage.Util.WrapHighlight)
+local v1 = RunService:IsServer()
+local t2 = {}
+local v2 = nil
+local v3 = nil
+
+task.defer(function() --[[ Line: 21 | Upvalues: v2 (ref), v3 (ref), t2 (copy), Net (copy) ]]
+	v2 = require(game.ReplicatedStorage.Util)
+	v3 = require(script.Particle)
+	t2.RegisterHitEvent = Net:RemoteEvent("RegisterHit", true)
+	t2.ReceivedHit = Net:RemoteEvent("ReceivedHit")
+end)
+function t.GetPureWeaponName(p1, p2) --[[ GetPureWeaponName | Line: 28 ]]
+	return string.lower(string.gsub(p2, "%s", ""))
+end
+function t.GetComboPaddingTime(p1) --[[ GetComboPaddingTime | Line: 39 ]]
+	return 0.3
+end
+function t.GetDefaultAOEDelay(p1) --[[ GetDefaultAOEDelay | Line: 44 ]]
+	return 0.35
+end
+function t.GetAttackCancelMultiplier(p1) --[[ GetAttackCancelMultiplier | Line: 51 ]]
+	return 0.8
+end
+
+local IsTransformed = require(game.ReplicatedStorage.Util.IsTransformed)
+
+function t.HasRigEquipped(p1, p2) --[[ HasRigEquipped | Line: 57 | Upvalues: IsTransformed (copy) ]]
+	if p2:FindFirstChild("HumanoidRootPart") and p2.HumanoidRootPart:FindFirstChild("Buddha") then
+		return false
+	end
+
+	return IsTransformed(p2, false, false)
+end
+function t.CanAttack(p1, p2, p3) --[[ CanAttack | Line: 72 | Upvalues: t (copy) ]]
+	if (_G.tapCooldown or 0) > os.clock() then
+		return
+	end
+
+	local v1 = if p2 then p2:FindFirstChildWhichIsA("Humanoid") else p2
+
+	if not v1 or v1.Health <= 0 then
+		return
+	end
+
+	local Stun = p2:FindFirstChild("Stun")
+	local Busy = p2:FindFirstChild("Busy")
+
+	if v1.Sit and (p3 == "Sword" or (p3 == "Melee" or p3 == "Gun")) then
+		return
+	end
+
+	if Stun and Stun.Value > 0 or Busy and Busy.Value then
+		return
+	end
+
+	if t:HasRigEquipped(p2) then
+		return
+	end
+
+	return true
+end
+function t.IsVulnerable(p1, p2) --[[ IsVulnerable | Line: 87 | Upvalues: RunService (copy), Players (copy) ]]
+	if not p2 then
+		return
+	end
+
+	local v2 = if (if p2 then p2:FindFirstChildWhichIsA("Humanoid") else p2).Health > 0 then true else false
+
+	if not RunService:IsServer() then
+		return v2
+	end
+
+	local v3 = _G.getWrappedPlayer(Players:GetPlayerFromCharacter(p2))
+
+	if v3 and v3:dodging() then
+		return false
+	end
+
+	return v2
+end
+function t.GetRigOfHitPart(p1, p2) --[[ GetRigOfHitPart | Line: 103 | Upvalues: Enemies (copy), Characters (copy) ]]
+	local v1 = p2:FindFirstAncestorWhichIsA("Tool")
+
+	if v1 then
+		return v1.Parent
+	end
+
+	for v2, v3 in { Enemies, Characters } do
+		for v4, v5 in v3:GetChildren() do
+			if p2:IsDescendantOf(v5) then
+				return v5
+			end
+		end
+	end
+end
+
+local t3 = {}
+local v4 = false
+local v5 = nil
+
+for v6, v7 in {
+	"RightUpperArm",
+	"RightLowerArm",
+	"RightHand",
+	"RightUpperLeg",
+	"RightLowerLeg",
+	"RightFoot",
+	"LeftUpperArm",
+	"LeftLowerArm",
+	"LeftHand",
+	"LeftUpperLeg",
+	"LeftLowerLeg",
+	"LeftFoot",
+	"UpperTorso",
+	"LowerTorso",
+	"Head",
+	"ModelHitbox"
+} do
+	t3[v7] = true
+end
+
+function removeFromTableBackwards(p1, p2) --[[ removeFromTableBackwards | Line: 133 ]]
+	repeat
+		local v1 = table.find(p1, p2)
+
+		if v1 then
+			local v2
+
+			table.remove(p1, v1)
+			v2 = v1
+
+			continue
+		end
+	until not v1
+end
+function t.GetHitDetectionParams(p1) --[[ GetHitDetectionParams | Line: 152 | Upvalues: v4 (ref), v5 (ref), Characters (copy), Enemies (copy) ]]
+	if not v4 then
+		v5 = OverlapParams.new()
+		v5.FilterType = Enum.RaycastFilterType.Include
+		v5.FilterDescendantsInstances = { Characters, Enemies }
+		v4 = true
+	end
+
+	return v5
+end
+
+local t4 = {}
+
+function t.ToggleLoadMovesetAnims(p1, p2, p3, p4) --[[ ToggleLoadMovesetAnims | Line: 170 | Upvalues: t (copy), t4 (copy), v2 (ref) ]]
+	for v22, v3 in p3.WeaponType == "Gun" and p3.Moveset or p3.Moveset.Basic do
+		local v4 = if p3.Moveset.Basic then t:GetPureWeaponName(p3.Name) .. "-basic" .. v22 else t:GetPureWeaponName(p3.Name) .. "-" .. v22
+
+		if p4 then
+			if not t4[p2] then
+				t4[p2] = {}
+			end
+
+			local Looped = v3.Looped
+			local v5 = v2.Anims:Get(p2.Parent, v3.AnimationId)
+
+			if v5 then
+				v5._Object.Name = v4
+
+				if string.match(v4, "Idle") then
+					v5._Object.Looped = true
+				else
+					v5._Object.Looped = Looped
+					v5._Object.Priority = Enum.AnimationPriority.Action
+					v5._Object:SetAttribute("SpeedMult", v3.SpeedMult)
+				end
+
+				t4[p2][v4] = v5
+			end
+
+			continue
+		end
+
+		if t4[p2] then
+			local v6 = t4[p2][v4]
+
+			if v6 then
+				v6:Stop()
+
+				if typeof(v6) == "Instance" then
+					v6:Destroy()
+				else
+					v6.Animation:Destroy()
+				end
+			end
+
+			t4[p2][v4] = nil
+
+			if not next(t4[p2]) then
+				t4[p2] = nil
+			end
+		end
+	end
+end
+function t.GetMovesetAnimCache(p1, p2) --[[ GetMovesetAnimCache | Line: 249 | Upvalues: t4 (copy) ]]
+	return t4[p2]
+end
+function t.GetLoadedAnimsFor(p1, p2, p3) --[[ GetLoadedAnimsFor | Line: 253 | Upvalues: t (copy) ]]
+	local v1 = t:GetPureWeaponName(p2)
+	local t2 = {}
+	local v2 = t:GetMovesetAnimCache(p3)
+
+	if v2 then
+		local v3 = v1
+
+		for v4, v5 in v2 do
+			local v6, v7 = string.match(v4, "(.+)-(.+)")
+
+			if v6 == v3 then
+				t2[v7] = v5
+			end
+		end
+	end
+
+	return t2
+end
+function t.AttackStart(p1, p2, p3) --[[ AttackStart | Line: 272 | Upvalues: t (copy), Enemies (copy), LocalPlayer (copy), v2 (ref) ]]
+	if not (p2 and p2.Parent) then
+		return
+	end
+
+	local Humanoid = p2.Parent:FindFirstChild("Humanoid")
+	local v1 = Humanoid and Humanoid.RootPart
+	local v22 = v1 and v1.Parent
+
+	if not v22 then
+		return
+	end
+
+	local Effect = require(game.ReplicatedStorage.Effect)
+	local EquippedWeapon = v22:FindFirstChild("EquippedWeapon")
+	local v3 = t:GetWeaponName(EquippedWeapon or p2)
+	local v4 = t:GetPureWeaponName(v3)
+	local v5 = t:GetWeaponData(v3)
+	local Moveset = v5.Moveset
+
+	assert(Moveset.Basic, (("Couldn\'t find the \'Basic\' moveset for %*"):format(v3)))
+
+	local v7 = Moveset.Basic[p3]
+	local v8 = v5.VFXDelay or v7.VFXDelay
+	local v9 = v22:IsDescendantOf(Enemies)
+
+	if EquippedWeapon then
+		for v10, v11 in EquippedWeapon:GetDescendants() do
+			if v11:IsA("Trail") and v4 ~= "dragontalon" then
+				v11.Enabled = true
+
+				continue
+			end
+
+			if v11.Name == "HitEffect" and v11:IsA("ParticleEmitter") then
+				task.delay(v8 or 0.25, function() --[[ Line: 305 | Upvalues: v11 (copy) ]]
+					v11:Emit(v11:GetAttribute("EmitCount") or 1)
+				end)
+			end
+		end
+
+		if v9 or LocalPlayer and (if v22 == LocalPlayer.Character then false else true) then
+			task.delay(0.75, function() --[[ Line: 313 | Upvalues: EquippedWeapon (copy) ]]
+				for v1, v2 in EquippedWeapon:GetDescendants() do
+					if v2:IsA("Trail") then
+						v2.Enabled = false
+					end
+				end
+			end)
+		end
+	end
+
+	if v4 == "superhuman" or v4 == "godhuman" then
+		task.delay(0.25, function() --[[ Line: 324 | Upvalues: Effect (copy), v22 (copy), v4 (copy) ]]
+			local v1 = Effect.new("Chop.Punch")
+			local t = {
+				Character = v22
+			}
+
+			t.God = v4 == "godhuman"
+			v1:play(t)
+		end)
+	elseif v4 == "divineart" then
+		task.defer(function() --[[ Line: 331 | Upvalues: Effect (copy), v1 (copy), p3 (copy) ]]
+			Effect.new("Angel.M1"):play({
+				hrp = v1,
+				index = p3
+			})
+		end)
+	elseif v4 == "flail" then
+		task.delay(0.3, function() --[[ Line: 338 | Upvalues: Effect (copy), v22 (copy) ]]
+			Effect.new("Chop.Punch"):play({
+				God = true,
+				Character = v22
+			})
+		end)
+	elseif v4 == "dragontalon" then
+		task.defer(function() --[[ Line: 345 | Upvalues: Effect (copy), v1 (copy), p3 (copy) ]]
+			task.delay(0.25, function() --[[ Line: 346 | Upvalues: Effect (ref), v1 (ref), p3 (ref) ]]
+				Effect.new("DragonTalon.M1"):play({
+					Root = v1,
+					Index = p3
+				})
+			end)
+		end)
+	elseif v4 == "sanguineart" then
+		task.defer(function() --[[ Line: 354 | Upvalues: Effect (copy), v1 (copy), p3 (copy) ]]
+			Effect.new("Ghoul.M1"):play({
+				Root = v1,
+				Combo = p3
+			})
+		end)
+	elseif v4 == "sharkmankarate" then
+		task.defer(function() --[[ Line: 361 | Upvalues: Effect (copy), v22 (copy), Humanoid (copy), p3 (copy) ]]
+			Effect.new("Sharkman2.M1"):play({
+				Character = v22,
+				Humanoid = Humanoid,
+				Combo = p3
+			})
+		end)
+	elseif v4 == "fishmankarate" then
+		task.defer(function() --[[ Line: 369 | Upvalues: Effect (copy), v22 (copy), Humanoid (copy), p3 (copy) ]]
+			Effect.new("WaterKungfu.M1"):play({
+				Character = v22,
+				Humanoid = Humanoid,
+				Combo = p3
+			})
+		end)
+	elseif v4 == "anchor" then
+		task.defer(function() --[[ Line: 377 | Upvalues: EquippedWeapon (copy), p3 (copy), v2 (ref), v22 (copy), LocalPlayer (ref) ]]
+			local Animation = Instance.new("Animation")
+
+			Animation.AnimationId = "rbxassetid://14798724768"
+
+			local Animation2 = Instance.new("Animation")
+
+			Animation2.AnimationId = "rbxassetid://14798726082"
+
+			local Animation3 = Instance.new("Animation")
+
+			Animation3.AnimationId = "rbxassetid://14798728487"
+
+			local Animation4 = Instance.new("Animation")
+
+			Animation4.AnimationId = "rbxassetid://14798729807"
+			EquippedWeapon.Right.Anchor.AnimationController:LoadAnimation(({ Animation, Animation2, Animation3, Animation4 })[p3]):Play()
+			task.delay(0.2, function() --[[ Line: 389 | Upvalues: v2 (ref), v22 (ref) ]]
+				v2.Sound:Play("SwordSwing", v22.HumanoidRootPart)
+			end)
+
+			if p3 ~= 4 or v22 ~= LocalPlayer.Character then
+				return
+			end
+
+			task.delay(0.2, function() --[[ Line: 395 | Upvalues: v2 (ref), v22 (ref) ]]
+				v2.BodyMover.new(v22):Create("BodyVelocity", {
+					Duration = 0.15,
+					Velocity = v22.HumanoidRootPart.CFrame.lookVector * 100
+				})
+			end)
+		end)
+	end
+
+	local PushDelay = v7.PushDelay
+	local PushForce = v7.PushForce
+
+	if PushDelay or PushForce then
+		task.delay(PushDelay or 0.2, function() --[[ Line: 406 | Upvalues: v2 (ref), v22 (copy), v1 (copy), PushForce (copy) ]]
+			v2.BodyMover.new(v22):Create("BodyVelocity", {
+				Duration = 0.15,
+				Velocity = v1.CFrame.LookVector * PushForce
+			})
+		end)
+	end
+
+	task.delay(PushDelay or 0.2, function() --[[ Line: 412 | Upvalues: v2 (ref), v5 (copy), v1 (copy) ]]
+		v2.Sound:Play(v5.SwingSound or "SwordSwing", v1)
+	end)
+
+	local AOEDelay = v7.AOEDelay
+	local AOEDistanceFromCharacter = v7.AOEDistanceFromCharacter
+
+	if not (AOEDelay or AOEDistanceFromCharacter) then
+		return
+	end
+
+	if v7.CustomAOEVFX then
+		return
+	end
+
+	task.delay(if AOEDelay then AOEDelay else t:GetDefaultAOEDelay(), function() --[[ Line: 419 | Upvalues: v2 (ref), v1 (copy), AOEDistanceFromCharacter (copy), Enemies (ref), v7 (copy), Effect (copy), v22 (copy) ]]
+		local v23, v3 = v2.Ray(v1.CFrame * Vector3.new(0, 0, -(AOEDistanceFromCharacter or 7.5)), Vector3.new(0, -4, 0), { workspace.Characters, Enemies })
+
+		if not v23 or v7.CustomAOEEffect then
+			return
+		end
+
+		Effect.new("Rubber.Transformed.Axe"):play({
+			PreviousPosition = nil,
+			Character = v22,
+			Position = v3
+		})
+	end)
+end
+function t.CanCharacterMeleeAoe(p1, p2) --[[ CanCharacterMeleeAoe | Line: 432 ]]
+	local v1 = if p2 then p2:FindFirstChild("HumanoidRootPart") else p2
+
+	if if v1 then v1:FindFirstChild("Buddha") else v1 then
+		return 10
+	end
+
+	return 1
+end
+
+local v8 = coroutine.create(function() --[[ Line: 447 | Upvalues: t2 (copy) ]]
+	local ok, result = pcall(function() --[[ Line: 448 | Upvalues: t2 (ref) ]]
+		repeat
+			task.wait()
+		until t2.RegisterHitEvent
+
+		local v1 = tostring(game.Players.LocalPlayer.UserId):sub(2, 4)
+		local v2 = v1 .. tostring(coroutine.running()):sub(11, 15)
+
+		t2.RegisterHitEvent:FireServer(v2)
+
+		while true do
+			local v3, v4 = coroutine.yield()
+
+			t2.RegisterHitEvent:FireServer(v3, v4, nil, v2)
+		end
+	end)
+
+	if ok then
+		return
+	end
+
+	warn(result)
+end)
+
+if not v1 then
+	function _G.checkHits() --[[ Line: 465 ]] end
+	function _G.SendHitsToServer(...) --[[ Line: 468 | Upvalues: v8 (copy) ]]
+		_G.checkHits(...)
+		coroutine.resume(v8, ...)
+	end
+	coroutine.resume(v8)
+end
+
+local t5 = {}
+
+local function registerHit(p1, p2, p3, p4, p5) --[[ registerHit | Line: 476 | Upvalues: v1 (copy), t5 (copy), Flags (copy), v8 (copy), t2 (copy), t (copy) ]]
+	if v1 then
+		require(game.ServerScriptService.Services.CombatService):RegisterHit(p1, p3)
+
+		return
+	end
+
+	if p5 then
+		for k, v in pairs(p5) do
+			table.insert(t5, v)
+		end
+
+		table.insert(t5, { p2, p3 })
+	end
+
+	if p1 == true then
+		if #t5 > 0 and Flags.COMBAT_REMOTE_THREAD then
+			coroutine.resume(v8, table.remove(t5, 1)[2], t5)
+		elseif #t5 > 0 then
+			t2.RegisterHitEvent:FireServer(table.remove(t5, 1)[2], t5)
+		end
+
+		table.clear(t5)
+	end
+
+	if p1 == true then
+		return
+	end
+
+	t:ApplyDamageHighlight(p2, p1, p4.Name, p4.WeaponType, p3)
+end
+
+function t.GetAttackAngle(p1, p2, p3) --[[ GetAttackAngle | Line: 511 ]]
+	return math.acos((p2.HumanoidRootPart.CFrame.LookVector:Dot((p3.HumanoidRootPart.Position - p2.HumanoidRootPart.Position).unit)))
+end
+function t.RunHitDetection(p1, p2, p3, p4) --[[ RunHitDetection | Line: 517 | Upvalues: Players (copy), t (copy), Enemies (copy), t3 (copy), registerHit (copy), Flags (copy), GetBoundingBoxCustom (copy), GetCornersOfPart (copy), v5 (ref), v1 (copy), t2 (copy) ]]
+	local v12 = p2.Parent
+	local v2 = Players:GetPlayerFromCharacter(v12)
+	local HumanoidRootPart = v12.HumanoidRootPart
+	local UpperTorso = v12.UpperTorso
+	local RightFoot = v12.RightFoot
+	local v3 = v12:FindFirstChild("EquippedWeapon") or t:GetEquippedWeaponTool(v12)
+	local v4 = t:GetWeaponName(v3)
+	local v52 = t:GetWeaponData(v4)
+	local v6 = if v52.WeaponType == "Melee" then true else false
+	local v7 = v3:IsDescendantOf(Enemies) and not v12:FindFirstChild("Summoner")
+	local Summoner = v12:FindFirstChild("Summoner")
+	local Basic = v52.Moveset.Basic
+
+	assert(Basic, (("Couldn\'t find the \'Basic\' moveset for %*"):format(v4)))
+
+	if if Basic[p3].AOEDelay == nil then false else true then
+		return
+	end
+
+	local t4 = {}
+
+	if v6 then
+		for v10, v11 in v12:GetChildren() do
+			if v11:HasTag("WeaponHitbox") or v11:HasTag("Blade") then
+				table.insert(t4, v11)
+			end
+		end
+	end
+
+	for v122, v13 in v3:GetDescendants() do
+		if v13:HasTag("WeaponHitbox") or v13:HasTag("Blade") then
+			table.insert(t4, v13)
+		end
+	end
+
+	local t5 = {}
+	local t6 = {}
+	local v14 = t:CanCharacterMeleeAoe(v12)
+
+	local function tryToRegisterHit(p1) --[[ tryToRegisterHit | Line: 563 | Upvalues: t (ref), t3 (ref), v12 (copy), v2 (copy), v52 (copy), HumanoidRootPart (copy), v7 (copy), t6 (copy), v14 (copy), t5 (copy), registerHit (ref) ]]
+		local v1 = nil
+		local v22 = nil
+
+		for v3, v4 in p1 do
+			local v5 = t:GetRigOfHitPart(v4)
+
+			if v5 then
+				if t3[v4.Name] then
+					local Summoner = v5:FindFirstChild("Summoner")
+					local Summoner2 = v12:FindFirstChild("Summoner")
+
+					if (not Summoner2 or v5 ~= Summoner2.Value.Character) and (not v2 or (not Summoner or Summoner.Value ~= v2)) then
+						local v6, v72, v8
+
+						if v52.ValidateFrontHits then
+							local Position = HumanoidRootPart.CFrame.Position
+							local Position2 = v5.PrimaryPart.CFrame.Position
+
+							if not (t:GetAttackAngle(v12, v5) > 1.3) and ((not v7 or (not v5:IsDescendantOf(workspace.Enemies) or (Summoner2 or Summoner))) and (v5 ~= v12 and t:IsVulnerable(v5))) then
+								if v1 then
+									if #t6 < v14 and (v4.Parent ~= v1 and not table.find(t6, v4.Parent)) then
+										v6 = t5
+										table.insert(t5, { v5, v4 })
+										v72 = t6
+										table.insert(t6, v5)
+									end
+
+									continue
+								end
+
+								v8 = t6
+								table.insert(t6, v5)
+								v1 = v5
+								v22 = v4
+							end
+						elseif (not v7 or (not v5:IsDescendantOf(workspace.Enemies) or (Summoner2 or Summoner))) and (v5 ~= v12 and t:IsVulnerable(v5)) then
+							if v1 then
+								if #t6 < v14 and (v4.Parent ~= v1 and not table.find(t6, v4.Parent)) then
+									v6 = t5
+									table.insert(t5, { v5, v4 })
+									v72 = t6
+									table.insert(t6, v5)
+								end
+
+								continue
+							end
+
+							v8 = t6
+							table.insert(t6, v5)
+							v1 = v5
+							v22 = v4
+						end
+					end
+				end
+
+				continue
+			end
+
+			warn("No rig found for hit part:", v4)
+		end
+
+		if v1 then
+			registerHit(v12, v1, v22, v52, t5)
+		end
+
+		return v1, v22
+	end
+
+	local BroadphaseHitboxPart = nil
+	local BroadphaseHitboxPart2
+
+	if Flags.NEW_COMBAT_SYSTEM_VISUALIZE_HITBOXES then
+		BroadphaseHitboxPart2 = Instance.new("Part")
+		BroadphaseHitboxPart2.Name = "BroadphaseHitboxPart"
+		BroadphaseHitboxPart2.BrickColor = BrickColor.new("Bright red")
+		BroadphaseHitboxPart2.Transparency = 0.8
+		BroadphaseHitboxPart2.CanCollide = false
+		BroadphaseHitboxPart2.CanTouch = false
+		BroadphaseHitboxPart2.CanQuery = false
+		BroadphaseHitboxPart2.Anchored = true
+		BroadphaseHitboxPart2.Parent = workspace
+	else
+		BroadphaseHitboxPart2 = nil
+	end
+
+	local Buddha2 = v12.HumanoidRootPart:FindFirstChild("Buddha2")
+	local v15 = (Buddha2 or v12.HumanoidRootPart:FindFirstChild("Buddha")) and true or false
+	local _ = HumanoidRootPart.Size.Y * 0.5 + v12.Humanoid.HipHeight + 0.5
+	local Length = p4._Object.Length
+	local sum = 0
+	local v16 = nil
+	local t7 = {}
+
+	while sum < Length and (p4._Object.IsPlaying and not v16) do
+		sum = sum + task.wait()
+
+		if v3 and not v3:IsDescendantOf(workspace) then
+			break
+		end
+
+		if not (sum < 0.13) then
+			local v17 = HumanoidRootPart.CFrame
+			local Position = v17.Position
+			local v18 = v17 * Vector3.new(UpperTorso.Size.X, 0, 0)
+			local v19 = math.clamp(sum / Length, 0, 1)
+			local v22 = v18:Lerp(Vector3.new(Position.X, (RightFoot.Position - Vector3.new(0, RightFoot.Size.Y * 0.5, 0)).Y, Position.Z), v19)
+			local v23, v24 = GetBoundingBoxCustom(t4)
+			local v25 = GetCornersOfPart({
+				CFrame = v23,
+				Size = v24
+			})
+			local t8 = { v18, v22, unpack(v25) }
+
+			for i = #t7, #t7 + 1 - 30, -1 do
+				local v26 = t7[i]
+
+				if v26 then
+					for v27, v28 in v26 do
+						table.insert(t8, v17 * v28)
+					end
+				end
+			end
+
+			local t9 = {}
+
+			for v29, v30 in v25 do
+				table.insert(t9, v17:ToObjectSpace(v30))
+			end
+
+			table.insert(t7, t9)
+
+			local v31, v32 = GetBoundingBoxCustom(t8)
+			local v33 = v31 * (v17 - Position)
+			local v35 = v32 * (1 / math.clamp(HumanoidRootPart:GetAttribute("CharacterSizeScaleNumber") or 1, 1, 999))
+			local v36 = if v7 then not Summoner else v7
+
+			if v36 then
+				v35 = v35 * 0.5
+			end
+
+			local v37 = HumanoidRootPart.Size * (HumanoidRootPart:GetAttribute("HrpSizeScale") or 1)
+
+			if v15 and v6 then
+				v35 = Vector3.new(10.625, 7.5, 10) * v37.Y / 2
+
+				local HitboxMagnitude = v52.HitboxMagnitude
+
+				if HitboxMagnitude then
+					v35 = v35 * (1 + (HitboxMagnitude - 2) * 0.1)
+				end
+
+				if Buddha2 then
+					v35 = v35 * Vector3.new(1, 1, 0.875)
+				end
+
+				v33 = HumanoidRootPart.CFrame * CFrame.new(0, -v35.Y * 0.125, -v35.Z / 3.25)
+			elseif v15 then
+				v35 = Vector3.new(v35.X, math.max(v37.Y * 4, v35.Y), v35.Z)
+			end
+
+			if BroadphaseHitboxPart2 then
+				BroadphaseHitboxPart2.CFrame = v33
+				BroadphaseHitboxPart2.Size = v35
+			end
+
+			local v41 = workspace:GetPartBoundsInBox(v33, v35, v5)
+
+			if v15 and v6 == false then
+				local v42 = Vector3.new(10.625, 7.5, 10) * v37.Y / 2
+				local HitboxMagnitude = v52.HitboxMagnitude
+
+				if HitboxMagnitude then
+					v42 = v42 * (1 + (HitboxMagnitude - 2) * 0.1)
+				end
+
+				if Buddha2 then
+					v42 = v42 * Vector3.new(1, 1, 0.875)
+				end
+
+				local v43 = HumanoidRootPart.CFrame * CFrame.new(0, -v42.Y * 0.125, -v42.Z / 3.25)
+
+				if Flags.NEW_COMBAT_SYSTEM_VISUALIZE_HITBOXES and not BroadphaseHitboxPart then
+					BroadphaseHitboxPart = Instance.new("Part")
+					BroadphaseHitboxPart.Name = "BroadphaseHitboxPart"
+					BroadphaseHitboxPart.BrickColor = BrickColor.new("Bright red")
+					BroadphaseHitboxPart.Transparency = 0.8
+					BroadphaseHitboxPart.CanCollide = false
+					BroadphaseHitboxPart.CanTouch = false
+					BroadphaseHitboxPart.CanQuery = false
+					BroadphaseHitboxPart.Anchored = true
+					BroadphaseHitboxPart.CFrame = v43
+					BroadphaseHitboxPart.Size = v42
+					BroadphaseHitboxPart.Parent = workspace
+				end
+
+				if BroadphaseHitboxPart then
+					BroadphaseHitboxPart.CFrame = v43
+					BroadphaseHitboxPart.Size = v42
+				end
+
+				for k, v in pairs(workspace:GetPartBoundsInBox(v43, v42, v5)) do
+					table.insert(v41, v)
+				end
+			end
+
+			local v44, v45 = tryToRegisterHit(v41)
+
+			if v44 then
+				local v46 = Players:GetPlayerFromCharacter(v44)
+
+				if v1 and v46 then
+					local Position3 = v45.Position
+
+					v47 = v45
+					v48 = v44
+
+					for v49, v50 in Players:GetPlayers() do
+						local Character = v50.Character
+
+						if v50 ~= v2 and (Character and (Character:GetPivot().Position - Position3).Magnitude <= 300) then
+							t2.ReceivedHit:FireClient(v46, v48, Character, v52.Name, v52.WeaponType, v47)
+						end
+					end
+				end
+
+				break
+			end
+
+			v16 = v44
+
+			if not v15 or v6 == false then
+				for v522, v53 in t4 do
+					local v51
+					local Size = v53.Size
+
+					if v36 then
+						v51 = Size * 0.5
+					else
+						local HitboxMagnitude = v52.HitboxMagnitude
+
+						if HitboxMagnitude then
+							Size = Size + Vector3.new(1, 1, 1) * HitboxMagnitude
+						end
+
+						if v6 then
+							Size = Size + Vector3.new(2, 2, 2)
+						end
+
+						if v12.HumanoidRootPart:FindFirstChild("Buddha2") then
+							Size = Size * 1.5
+						elseif v12.HumanoidRootPart:FindFirstChild("Buddha") then
+							Size = Size * 1.2
+						end
+
+						v51 = Vector3.new(math.max(3, Size.X), math.max(3, Size.Y), (math.max(3, Size.Z)))
+					end
+
+					if Flags.NEW_COMBAT_SYSTEM_VISUALIZE_HITBOXES then
+						local Part = Instance.new("Part")
+
+						Part.BrickColor = BrickColor.new("Bright red")
+						Part.Transparency = 0.5
+						Part.CanCollide = false
+						Part.CanTouch = false
+						Part.CanQuery = false
+						Part.Anchored = true
+						Part.CFrame = v53.CFrame
+						Part.Size = v51
+						Part.Parent = workspace
+						task.delay(0, function() --[[ Line: 841 | Upvalues: Part (copy) ]]
+							Part:Destroy()
+						end)
+					end
+
+					local v58, v59 = tryToRegisterHit((workspace:GetPartBoundsInBox(v53.CFrame, v51, v5)))
+
+					if v58 then
+						local v60 = Players:GetPlayerFromCharacter(v58)
+
+						if v1 and v60 then
+							local Position3 = v59.Position
+							local v61
+
+							v61 = v59
+							v16 = v58
+
+							for v62, v63 in Players:GetPlayers() do
+								local Character = v63.Character
+
+								if v63 ~= v2 and (Character and (Character:GetPivot().Position - Position3).Magnitude <= 300) then
+									t2.ReceivedHit:FireClient(v60, v16, Character, v52.Name, v52.WeaponType, v61)
+								end
+							end
+
+							break
+						end
+
+						v16 = v58
+
+						break
+					end
+
+					v16 = v58
+				end
+
+				continue
+			end
+		end
+	end
+
+	if v2 == game.Players.LocalPlayer then
+		registerHit(true)
+	end
+
+	if not Flags.NEW_COMBAT_SYSTEM_VISUALIZE_HITBOXES then
+		return
+	end
+
+	task.delay(0.1, function() --[[ Line: 876 | Upvalues: BroadphaseHitboxPart2 (ref) ]]
+		BroadphaseHitboxPart2:Destroy()
+	end)
+
+	if not BroadphaseHitboxPart then
+		return
+	end
+
+	task.delay(0.1, function() --[[ Line: 880 | Upvalues: BroadphaseHitboxPart (ref) ]]
+		BroadphaseHitboxPart:Destroy()
+	end)
+end
+ 
+-- ---------------------------------------------------------------------------
+-- Standalone version of RunHitDetection
+-- This function can be used outside of the CombatUtil module by providing the
+-- required services and utilities as arguments. Variable names have been
+-- expanded for readability.
+-- ---------------------------------------------------------------------------
+
+--- Runs hit detection for a given attacker.
+--- @param attacker Character The character performing the attack.
+--- @param hitPart BasePart The part that initiated the hit (e.g., weapon handle).
+--- @param moveIndex number The index of the move/animation being used.
+--- @param animationTrack AnimationTrack The animation track playing the attack.
+--- @param deps table A table containing required dependencies:
+---   {
+---     Players = Players,
+---     Enemies = Enemies,
+---     Characters = Characters,
+---     HitPartLookup = t3,
+---     Flags = Flags,
+---     GetBoundingBoxCustom = GetBoundingBoxCustom,
+---     GetCornersOfPart = GetCornersOfPart,
+---     RaycastParams = v5,
+---     IsServer = v1,
+---     RemoteEvents = t2,
+---     CombatModule = t,
+---   }
+--- @return nil
+function RunHitDetectionStandalone(attacker, hitPart, moveIndex, animationTrack, deps)
+	-- Resolve dependencies with sensible defaults when not provided
+	local Players = deps and deps.Players or game:GetService("Players")
+	local Enemies = deps and deps.Enemies or workspace.Enemies
+	local Characters = deps and deps.Characters or workspace.Characters
+	local HitPartLookup = deps and deps.HitPartLookup or {}
+	local Flags = deps and deps.Flags or {}
+	local GetBoundingBoxCustom = deps and deps.GetBoundingBoxCustom or GetBoundingBoxCustom
+	local GetCornersOfPart = deps and deps.GetCornersOfPart or GetCornersOfPart
+	local RaycastParams = deps and deps.RaycastParams or v5
+	local IsServer = deps and deps.IsServer or v1
+	local RemoteEvents = deps and deps.RemoteEvents or t2
+	local Combat = deps and deps.CombatModule or t
+
+	local attackerPlayer = Players:GetPlayerFromCharacter(attacker)
+	local humanoidRoot = attacker.HumanoidRootPart
+	local upperTorso = attacker.UpperTorso
+	local rightFoot = attacker.RightFoot
+
+	local equippedWeapon = attacker:FindFirstChild("EquippedWeapon") or Combat:GetEquippedWeaponTool(attacker)
+	local weaponName = Combat:GetWeaponName(equippedWeapon)
+	local weaponData = Combat:GetWeaponData(weaponName)
+	local isMelee = weaponData.WeaponType == "Melee"
+	local isEnemyWeapon = equippedWeapon and equippedWeapon:IsDescendantOf(Enemies) and not attacker:FindFirstChild("Summoner")
+	local attackerSummoner = attacker:FindFirstChild("Summoner")
+	local basicMoveset = weaponData.Moveset.Basic
+
+	assert(basicMoveset, ("Couldn't find the 'Basic' moveset for %s"):format(weaponName))
+
+	-- Abort if the move has an AOEDelay defined (original guard)
+	if basicMoveset[moveIndex].AOEDelay ~= nil then
+		return
+	end
+
+	-- Gather all potential hit parts
+	local potentialHitParts = {}
+	if isMelee then
+		for _, part in ipairs(attacker:GetChildren()) do
+			if part:HasTag("WeaponHitbox") or part:HasTag("Blade") then
+				table.insert(potentialHitParts, part)
+			end
+		end
+	end
+	for _, descendant in ipairs(equippedWeapon:GetDescendants()) do
+		if descendant:HasTag("WeaponHitbox") or descendant:HasTag("Blade") then
+			table.insert(potentialHitParts, descendant)
+		end
+	end
+
+	local pendingHits = {}
+	local processedHits = {}
+	local maxAoeTargets = Combat:CanCharacterMeleeAoe(attacker)
+
+	local function tryRegisterHit(candidates)
+		local firstTarget = nil
+		local firstHitPart = nil
+		for _, candidatePart in ipairs(candidates) do
+			local targetCharacter = Combat:GetRigOfHitPart(candidatePart)
+			if targetCharacter then
+				if HitPartLookup[candidatePart.Name] then
+					local targetSummoner = targetCharacter:FindFirstChild("Summoner")
+					local attackerSummoner = attacker:FindFirstChild("Summoner")
+					if (not attackerSummoner or targetCharacter ~= attackerSummoner.Value.Character) and (not attackerPlayer or (not targetSummoner or targetSummoner.Value ~= attackerPlayer)) then
+						local canHit = false
+						if weaponData.ValidateFrontHits then
+							local attackerPos = humanoidRoot.CFrame.Position
+							local targetPos = targetCharacter.PrimaryPart.CFrame.Position
+							if not (Combat:GetAttackAngle(attacker, targetCharacter) > 1.3) and ((not isEnemyWeapon or (not targetCharacter:IsDescendantOf(workspace.Enemies) or (attackerSummoner or targetSummoner))) and (targetCharacter ~= attacker and Combat:IsVulnerable(targetCharacter))) then
+								canHit = true
+							end
+						else
+							if (not isEnemyWeapon or (not targetCharacter:IsDescendantOf(workspace.Enemies) or (attackerSummoner or targetSummoner))) and (targetCharacter ~= attacker and Combat:IsVulnerable(targetCharacter)) then
+								canHit = true
+							end
+						end
+
+						if canHit then
+							if firstTarget then
+								if #processedHits < maxAoeTargets and candidatePart.Parent ~= firstTarget and not table.find(processedHits, candidatePart.Parent) then
+									table.insert(pendingHits, { targetCharacter, candidatePart })
+									table.insert(processedHits, targetCharacter)
+								end
+								continue
+							end
+							firstTarget = targetCharacter
+							firstHitPart = candidatePart
+						end
+					end
+				end
+			else
+				warn("No rig found for hit part:", candidatePart)
+			end
+		end
+		if firstTarget then
+			registerHit(attacker, firstTarget, firstHitPart, weaponData, pendingHits)
+		end
+		return firstTarget, firstHitPart
+	end
+
+	-- Visualization (optional, kept identical to original for debugging)
+	local broadphaseHitbox = nil
+	local broadphaseHitbox2 = nil
+	if Flags.NEW_COMBAT_SYSTEM_VISUALIZE_HITBOXES then
+		broadphaseHitbox2 = Instance.new("Part")
+		broadphaseHitbox2.Name = "BroadphaseHitboxPart"
+		broadphaseHitbox2.BrickColor = BrickColor.new("Bright red")
+		broadphaseHitbox2.Transparency = 0.8
+		broadphaseHitbox2.CanCollide = false
+		broadphaseHitbox2.CanTouch = false
+		broadphaseHitbox2.CanQuery = false
+		broadphaseHitbox2.Anchored = true
+		broadphaseHitbox2.Parent = workspace
+	end
+
+	local buddha2 = attacker.HumanoidRootPart:FindFirstChild("Buddha2")
+	local hasBuddha = (buddha2 or attacker.HumanoidRootPart:FindFirstChild("Buddha")) and true or false
+	local dummy = humanoidRoot.Size.Y * 0.5 + attacker.Humanoid.HipHeight + 0.5
+	local animationLength = animationTrack._Object.Length
+	local elapsed = 0
+	local hitStopped = nil
+	local recentFrames = {}
+
+	while elapsed < animationLength and (animationTrack._Object.IsPlaying and not hitStopped) do
+		elapsed = elapsed + task.wait()
+		if equippedWeapon and not equippedWeapon:IsDescendantOf(workspace) then break end
+		if not (elapsed < 0.13) then
+			local rootCFrame = humanoidRoot.CFrame
+			local rootPos = rootCFrame.Position
+			local torsoOffset = rootCFrame * Vector3.new(upperTorso.Size.X, 0, 0)
+			local progress = math.clamp(elapsed / animationLength, 0, 1)
+			local footPos = torsoOffset:Lerp(Vector3.new(rootPos.X, (rightFoot.Position - Vector3.new(0, rightFoot.Size.Y * 0.5, 0)).Y, rootPos.Z), progress)
+			local boxCFrame, boxSize = GetBoundingBoxCustom(potentialHitParts)
+			local corners = GetCornersOfPart({ CFrame = boxCFrame, Size = boxSize })
+			local sweepPoints = { torsoOffset, footPos, unpack(corners) }
+			for i = #recentFrames, #recentFrames + 1 - 30, -1 do
+				local old = recentFrames[i]
+				if old then
+					for _, offset in ipairs(old) do
+						table.insert(sweepPoints, rootCFrame * offset)
+					end
+				end
+			end
+			local transformedPoints = {}
+			for _, corner in ipairs(corners) do
+				table.insert(transformedPoints, rootCFrame:ToObjectSpace(corner))
+			end
+			table.insert(recentFrames, transformedPoints)
+			local boxCFrame2, boxSize2 = GetBoundingBoxCustom(sweepPoints)
+			local finalCFrame = boxCFrame2 * (rootCFrame - rootPos)
+			local finalSize = boxSize2 * (1 / math.clamp(humanoidRoot:GetAttribute("CharacterSizeScaleNumber") or 1, 1, 999))
+			local useHalf = if isEnemyWeapon then not attackerSummoner else isEnemyWeapon
+			if useHalf then finalSize = finalSize * 0.5 end
+			local characterScale = humanoidRoot.Size * (humanoidRoot:GetAttribute("HrpSizeScale") or 1)
+			if hasBuddha and isMelee then
+				finalSize = Vector3.new(10.625, 7.5, 10) * characterScale.Y / 2
+				local hitboxMag = weaponData.HitboxMagnitude
+				if hitboxMag then finalSize = finalSize * (1 + (hitboxMag - 2) * 0.1) end
+				if buddha2 then finalSize = finalSize * Vector3.new(1, 1, 0.875) end
+				finalCFrame = humanoidRoot.CFrame * CFrame.new(0, -finalSize.Y * 0.125, -finalSize.Z / 3.25)
+			elseif hasBuddha then
+				finalSize = Vector3.new(finalSize.X, math.max(characterScale.Y * 4, finalSize.Y), finalSize.Z)
+			end
+			if broadphaseHitbox2 then
+				broadphaseHitbox2.CFrame = finalCFrame
+				broadphaseHitbox2.Size = finalSize
+			end
+			local hitResults = workspace:GetPartBoundsInBox(finalCFrame, finalSize, RaycastParams)
+			if hasBuddha and not isMelee then
+				local extraSize = Vector3.new(10.625, 7.5, 10) * characterScale.Y / 2
+				local hitboxMag = weaponData.HitboxMagnitude
+				if hitboxMag then extraSize = extraSize * (1 + (hitboxMag - 2) * 0.1) end
+				if buddha2 then extraSize = extraSize * Vector3.new(1, 1, 0.875) end
+				local extraCFrame = humanoidRoot.CFrame * CFrame.new(0, -extraSize.Y * 0.125, -extraSize.Z / 3.25)
+				if Flags.NEW_COMBAT_SYSTEM_VISUALIZE_HITBOXES and not broadphaseHitbox then
+					broadphaseHitbox = Instance.new("Part")
+					broadphaseHitbox.Name = "BroadphaseHitboxPart"
+					broadphaseHitbox.BrickColor = BrickColor.new("Bright red")
+					broadphaseHitbox.Transparency = 0.8
+					broadphaseHitbox.CanCollide = false
+					broadphaseHitbox.CanTouch = false
+					broadphaseHitbox.CanQuery = false
+					broadphaseHitbox.Anchored = true
+					broadphaseHitbox.CFrame = extraCFrame
+					broadphaseHitbox.Size = extraSize
+					broadphaseHitbox.Parent = workspace
+				end
+				if broadphaseHitbox then
+					broadphaseHitbox.CFrame = extraCFrame
+					broadphaseHitbox.Size = extraSize
+				end
+				for _, extraHit in pairs(workspace:GetPartBoundsInBox(extraCFrame, extraSize, RaycastParams)) do
+					table.insert(hitResults, extraHit)
+				end
+			end
+			local hitTarget, hitPart = tryRegisterHit(hitResults)
+			if hitTarget then
+				local hitPlayer = Players:GetPlayerFromCharacter(hitTarget)
+				if attackerPlayer and hitPlayer then
+					local hitPos = hitPart.Position
+					for _, otherPlayer in ipairs(Players:GetPlayers()) do
+						local otherChar = otherPlayer.Character
+						if otherPlayer ~= attackerPlayer and otherChar and (otherChar:GetPivot().Position - hitPos).Magnitude <= 300 then
+							RemoteEvents.ReceivedHit:FireClient(hitPlayer, hitTarget, otherChar, weaponData.Name, weaponData.WeaponType, hitPart)
+						end
+					end
+				end
+				break
+			end
+			hitStopped = hitTarget
+			if not hasBuddha or not isMelee then
+				for _, extraPart in ipairs(potentialHitParts) do
+					local size = extraPart.Size
+					local finalSizeCalc
+					if useHalf then
+						finalSizeCalc = size * 0.5
+					else
+						local hitboxMag = weaponData.HitboxMagnitude
+						if hitboxMag then size = size + Vector3.new(1,1,1) * hitboxMag end
+						if isMelee then size = size + Vector3.new(2,2,2) end
+						if attacker.HumanoidRootPart:FindFirstChild("Buddha2") then
+							size = size * 1.5
+						elseif attacker.HumanoidRootPart:FindFirstChild("Buddha") then
+							size = size * 1.2
+						end
+						finalSizeCalc = Vector3.new(math.max(3, size.X), math.max(3, size.Y), math.max(3, size.Z))
+					end
+					if Flags.NEW_COMBAT_SYSTEM_VISUALIZE_HITBOXES then
+						local partVis = Instance.new("Part")
+						partVis.BrickColor = BrickColor.new("Bright red")
+						partVis.Transparency = 0.5
+						partVis.CanCollide = false
+						partVis.CanTouch = false
+						partVis.CanQuery = false
+						partVis.Anchored = true
+						partVis.CFrame = extraPart.CFrame
+						partVis.Size = finalSizeCalc
+						partVis.Parent = workspace
+						task.delay(0, function() partVis:Destroy() end)
+					end
+					local extraHitTarget, extraHitPart = tryRegisterHit(workspace:GetPartBoundsInBox(extraPart.CFrame, finalSizeCalc, RaycastParams))
+					if extraHitTarget then
+						local extraPlayer = Players:GetPlayerFromCharacter(extraHitTarget)
+						if attackerPlayer and extraPlayer then
+							local extraPos = extraHitPart.Position
+							for _, otherPlayer in ipairs(Players:GetPlayers()) do
+								local otherChar = otherPlayer.Character
+								if otherPlayer ~= attackerPlayer and otherChar and (otherChar:GetPivot().Position - extraPos).Magnitude <= 300 then
+									RemoteEvents.ReceivedHit:FireClient(extraPlayer, extraHitTarget, otherChar, weaponData.Name, weaponData.WeaponType, extraHitPart)
+								end
+							end
+						end
+						break
+					end
+					hitStopped = extraHitTarget
+				end
+				continue
+			end
+		end
+	end
+
+	if attackerPlayer == game.Players.LocalPlayer then
+		registerHit(true)
+	end
+
+	if not Flags.NEW_COMBAT_SYSTEM_VISUALIZE_HITBOXES then return end
+	task.delay(0.1, function() if broadphaseHitbox2 then broadphaseHitbox2:Destroy() end end)
+	if not broadphaseHitbox then return end
+	task.delay(0.1, function() broadphaseHitbox:Destroy() end)
+end
+
+local function toCamelCase(p1) --[[ toCamelCase | Line: 892 ]]
+	return string.lower(p1:sub(1, 1)) .. p1:sub(2, #p1)
+end
+
+local function toPascalCase(p1) --[[ toPascalCase | Line: 896 ]]
+	return string.upper(p1:sub(1, 1)) .. p1:sub(2, #p1)
+end
+
+local function removeSpaces(p1) --[[ removeSpaces | Line: 900 ]]
+	return string.gsub(p1, "%s", "")
+end
+
+function t.GetWeaponData(p1, p2) --[[ GetWeaponData | Line: 904 | Upvalues: t (copy), WeaponData (copy) ]]
+	for v1, v2 in {
+		p2,
+		t:GetPureWeaponName(p2),
+		string.gsub(p2, "%s", ""),
+		string.lower(p2),
+		string.lower(p2:sub(1, 1)) .. p2:sub(2, #p2),
+		string.upper(p2:sub(1, 1)) .. p2:sub(2, #p2)
+	} do
+		local v3 = WeaponData[v2]
+
+		if v3 then
+			return v3
+		end
+	end
+end
+function t.GetWeaponName(p1, p2) --[[ GetWeaponName | Line: 922 ]]
+	return p2:GetAttribute("WeaponName") or p2.Name
+end
+function t.GetWeaponModel(p1, p2, p3) --[[ GetWeaponModel | Line: 926 | Upvalues: t (copy) ]]
+	local v1 = t:GetPureWeaponName(p3)
+
+	for v2, v3 in p2:GetChildren() do
+		if t:GetPureWeaponName(v3.Name) == v1 then
+			return v3
+		end
+	end
+end
+function t.GetEquippedWeaponTool(p1, p2) --[[ GetEquippedWeaponTool | Line: 935 ]]
+	for v1, v2 in p2:GetChildren() do
+		if v2:IsA("Tool") and (v2:HasTag("MeleeTool") or v2:HasTag("GunTool")) then
+			return v2
+		end
+	end
+end
+function t.CreateShootAngles(p1, p2) --[[ CreateShootAngles | Line: 943 ]]
+	if p2.NoSpread then
+		return {
+			{
+				Angle = CFrame.Angles(0, 0, 0)
+			}
+		}
+	end
+
+	local t = {}
+	local v1 = Random.new(p2.Seed)
+	local v3 = p2.BulletSpreadDegree or 12
+
+	local function addAngle() --[[ addAngle | Line: 954 | Upvalues: v1 (copy), v3 (copy), t (copy) ]]
+		table.insert(t, {
+			Angle = CFrame.Angles(math.rad((v1:NextNumber(-v3 / 2, v3 / 2))), math.rad((v1:NextNumber(-v3 / 2, v3 / 2))), (math.rad((v1:NextNumber(-v3 / 2, v3 / 2)))))
+		})
+	end
+
+	if p2.BulletSpreadCount == 1 then
+		addAngle()
+
+		return t
+	end
+
+	table.insert(t, {
+		Angle = CFrame.Angles(0, 0, 0)
+	})
+
+	for i = 1, (p2.BulletSpreadCount or 7) - 1 do
+		addAngle()
+	end
+
+	return t
+end
+function t.GetToolOfWeaponType(p1, p2, p3) --[[ GetToolOfWeaponType | Line: 977 | Upvalues: Players (copy) ]]
+	local v1 = Players:GetPlayerFromCharacter(p2)
+
+	if v1 then
+		for v2, v3 in v1.Backpack:GetChildren() do
+			if v3:IsA("Tool") and v3:GetAttribute("WeaponType") == p3 then
+				return v3
+			end
+		end
+	end
+
+	local v4 = p2:FindFirstChildWhichIsA("Tool")
+
+	if v4 and v4:GetAttribute("WeaponType") == p3 then
+		return v4
+	end
+end
+function t.PlayMeleeHitParticles(p1, p2, p3, p4) --[[ PlayMeleeHitParticles | Line: 994 | Upvalues: t (copy), v3 (ref) ]]
+	task.defer(function() --[[ Line: 995 | Upvalues: p3 (copy), p2 (copy), t (ref), p4 (copy), v3 (ref) ]]
+		local v1 = p3 and p3.Position or p2:GetPivot().Position
+
+		v3.play("Hit", v1, (t:GetWeaponData(p4)))
+	end)
+end
+function t.ApplyDamageHighlight(p1, p2, p3, p4, p5, p6, p7) --[[ ApplyDamageHighlight | Line: 1003 | Upvalues: t (copy), Players (copy), Enemies (copy), TweenService (copy), WrapHighlight (copy) ]]
+	if t:HasRigEquipped(p2) then
+		return
+	end
+
+	local v1 = Players:GetPlayerFromCharacter(p2)
+	local v2 = Players:GetPlayerFromCharacter(p3)
+
+	if not (v1 or v2) then
+		return
+	end
+
+	if v1 and (v2 and _G.InSafeZone) then
+		return
+	end
+
+	if v1 then
+		if v1:GetAttribute("PvpDisabled") then
+			return
+		end
+
+		if v1:GetAttribute("KenActive") then
+			local v3 = v1:GetAttribute("KenDodgesLeft") or 0
+			local v4 = v1:GetAttribute("LastKenDodge") or 0
+
+			if v3 > 0 or tick() - v4 <= 0.4 then
+				return
+			end
+		end
+	end
+
+	local v6 = if p3 and p3:IsDescendantOf(Enemies) then p3 else nil
+	local v7 = if p2 and p2:IsDescendantOf(Enemies) then p2 else nil
+	local v8 = v6 and v6:GetAttribute("Level") or (if v7 then v7:GetAttribute("Level") else v7)
+	local v9 = v6 and v6:GetAttribute("IsBoss") or (if v7 then v7:GetAttribute("IsBoss") else v7)
+	local v10 = if v2 then v2:FindFirstChild("Data") else v2
+	local v11 = if v1 then v1:FindFirstChild("Data") else v1
+	local v12 = v10 and v10.Level.Value or (if v6 and v8 then v8 else 1)
+	local v13 = v11 and v11.Level.Value or v7 and v8
+	local v14 = math.floor((v12 / 175) ^ 1.5) * 2
+	local v15 = nil
+
+	if v2 then
+		local v16 = t:GetToolOfWeaponType(p3, "Melee")
+
+		if v16 then
+			v15 = v16:GetAttribute("WeaponName")
+		end
+	elseif v6 then
+		v15 = v6:GetAttribute("WeaponName")
+	end
+
+	local v19 = t:GetToolOfWeaponType(p2, "Demon Fruit")
+	local v20, v21, v22
+
+	if p5 == "Melee" or (p5 == "Sword" or p5 == "Gun") then
+		if v19 and (v19.Name == "Rubber-Rubber" and (p5 == "Melee" and (v10 and v15 == "Electro"))) then
+			return
+		end
+
+		if v19 and (v19.Name == "Blade-Blade" and p5 == "Sword") then
+			if (not v6 or v9) and v6 then
+				if v19 and (v19.Name == "Rubber-Rubber" and p5 == "Gun") then
+					if (not v6 or v9) and v6 then
+						if v19 and (v19:FindFirstChild("Logia") and not p3:GetAttribute("BusoEnabled")) then
+							if v6 and v8 <= v13 - v14 or not v6 then
+								return
+							end
+						elseif v19 and (v19:FindFirstChild("LogiaDough") and (v1 and (v1:GetAttribute("KenActive") and not p3:GetAttribute("BusoEnabled")))) and (v6 and v8 <= v13 - v14 or not v6) then
+							return
+						end
+
+						if not v1 and (p2:GetAttribute("FruitType") == "Logia" and not p3:GetAttribute("BusoEnabled")) then
+							return
+						end
+
+						if p5 ~= "Gun" then
+							t:PlayMeleeHitParticles(p2, p6, p4)
+						end
+
+						v20 = p2:FindFirstChildOfClass("Highlight")
+
+						if not v20 then
+							v21 = WrapHighlight(script.DamageHighlight):Clone()
+							v21.Parent = p2
+							TweenService:Create(v21, TweenInfo.new(0.2), {
+								FillTransparency = 0.5
+							}):Play()
+							task.delay(0.2, function() --[[ Line: 1113 | Upvalues: TweenService (ref), v21 (copy) ]]
+								TweenService:Create(v21, TweenInfo.new(0.2), {
+									FillTransparency = 1
+								}):Play()
+								task.wait(0.2)
+								v21:Destroy()
+							end)
+
+							return true
+						end
+
+						if not v20:GetAttribute("__FillColor") then
+							return true
+						end
+
+						v22 = Color3.fromRGB(138, 0, 0)
+						TweenService:Create(v20, TweenInfo.new(0.2), {
+							FillColor = v22
+						}):Play()
+						task.delay(0.2, function() --[[ Line: 1100 | Upvalues: TweenService (ref), v20 (copy) ]]
+							TweenService:Create(v20, TweenInfo.new(0.2), {
+								FillColor = v20:GetAttribute("__FillColor")
+							}):Play()
+						end)
+
+						return true
+					end
+
+					if v6 and v8 <= v13 - v14 or not v6 then
+						return
+					end
+
+					if not v1 and (p2:GetAttribute("FruitType") == "Logia" and not p3:GetAttribute("BusoEnabled")) then
+						return
+					end
+
+					if p5 ~= "Gun" then
+						t:PlayMeleeHitParticles(p2, p6, p4)
+					end
+
+					v20 = p2:FindFirstChildOfClass("Highlight")
+
+					if not v20 then
+						v21 = WrapHighlight(script.DamageHighlight):Clone()
+						v21.Parent = p2
+						TweenService:Create(v21, TweenInfo.new(0.2), {
+							FillTransparency = 0.5
+						}):Play()
+						task.delay(0.2, function() --[[ Line: 1113 | Upvalues: TweenService (ref), v21 (copy) ]]
+							TweenService:Create(v21, TweenInfo.new(0.2), {
+								FillTransparency = 1
+							}):Play()
+							task.wait(0.2)
+							v21:Destroy()
+						end)
+
+						return true
+					end
+
+					if not v20:GetAttribute("__FillColor") then
+						return true
+					end
+
+					v22 = Color3.fromRGB(138, 0, 0)
+					TweenService:Create(v20, TweenInfo.new(0.2), {
+						FillColor = v22
+					}):Play()
+					task.delay(0.2, function() --[[ Line: 1100 | Upvalues: TweenService (ref), v20 (copy) ]]
+						TweenService:Create(v20, TweenInfo.new(0.2), {
+							FillColor = v20:GetAttribute("__FillColor")
+						}):Play()
+					end)
+
+					return true
+				end
+
+				if v19 and (v19:FindFirstChild("Logia") and not p3:GetAttribute("BusoEnabled")) then
+					if v6 and v8 <= v13 - v14 or not v6 then
+						return
+					end
+				elseif v19 and (v19:FindFirstChild("LogiaDough") and (v1 and (v1:GetAttribute("KenActive") and not p3:GetAttribute("BusoEnabled")))) and (v6 and v8 <= v13 - v14 or not v6) then
+					return
+				end
+
+				if not v1 and (p2:GetAttribute("FruitType") == "Logia" and not p3:GetAttribute("BusoEnabled")) then
+					return
+				end
+
+				if p5 ~= "Gun" then
+					t:PlayMeleeHitParticles(p2, p6, p4)
+				end
+
+				v20 = p2:FindFirstChildOfClass("Highlight")
+
+				if not v20 then
+					v21 = WrapHighlight(script.DamageHighlight):Clone()
+					v21.Parent = p2
+					TweenService:Create(v21, TweenInfo.new(0.2), {
+						FillTransparency = 0.5
+					}):Play()
+					task.delay(0.2, function() --[[ Line: 1113 | Upvalues: TweenService (ref), v21 (copy) ]]
+						TweenService:Create(v21, TweenInfo.new(0.2), {
+							FillTransparency = 1
+						}):Play()
+						task.wait(0.2)
+						v21:Destroy()
+					end)
+
+					return true
+				end
+
+				if not v20:GetAttribute("__FillColor") then
+					return true
+				end
+
+				v22 = Color3.fromRGB(138, 0, 0)
+				TweenService:Create(v20, TweenInfo.new(0.2), {
+					FillColor = v22
+				}):Play()
+				task.delay(0.2, function() --[[ Line: 1100 | Upvalues: TweenService (ref), v20 (copy) ]]
+					TweenService:Create(v20, TweenInfo.new(0.2), {
+						FillColor = v20:GetAttribute("__FillColor")
+					}):Play()
+				end)
+
+				return true
+			end
+
+			if v6 and v8 <= v13 - v14 or not v6 then
+				return
+			end
+
+			if not v1 and (p2:GetAttribute("FruitType") == "Logia" and not p3:GetAttribute("BusoEnabled")) then
+				return
+			end
+
+			if p5 ~= "Gun" then
+				t:PlayMeleeHitParticles(p2, p6, p4)
+			end
+
+			v20 = p2:FindFirstChildOfClass("Highlight")
+
+			if not v20 then
+				v21 = WrapHighlight(script.DamageHighlight):Clone()
+				v21.Parent = p2
+				TweenService:Create(v21, TweenInfo.new(0.2), {
+					FillTransparency = 0.5
+				}):Play()
+				task.delay(0.2, function() --[[ Line: 1113 | Upvalues: TweenService (ref), v21 (copy) ]]
+					TweenService:Create(v21, TweenInfo.new(0.2), {
+						FillTransparency = 1
+					}):Play()
+					task.wait(0.2)
+					v21:Destroy()
+				end)
+
+				return true
+			end
+
+			if not v20:GetAttribute("__FillColor") then
+				return true
+			end
+
+			v22 = Color3.fromRGB(138, 0, 0)
+			TweenService:Create(v20, TweenInfo.new(0.2), {
+				FillColor = v22
+			}):Play()
+			task.delay(0.2, function() --[[ Line: 1100 | Upvalues: TweenService (ref), v20 (copy) ]]
+				TweenService:Create(v20, TweenInfo.new(0.2), {
+					FillColor = v20:GetAttribute("__FillColor")
+				}):Play()
+			end)
+
+			return true
+		end
+
+		if v19 and (v19.Name == "Rubber-Rubber" and p5 == "Gun") then
+			if (not v6 or v9) and v6 then
+				if v19 and (v19:FindFirstChild("Logia") and not p3:GetAttribute("BusoEnabled")) then
+					if v6 and v8 <= v13 - v14 or not v6 then
+						return
+					end
+				elseif v19 and (v19:FindFirstChild("LogiaDough") and (v1 and (v1:GetAttribute("KenActive") and not p3:GetAttribute("BusoEnabled")))) and (v6 and v8 <= v13 - v14 or not v6) then
+					return
+				end
+
+				if not v1 and (p2:GetAttribute("FruitType") == "Logia" and not p3:GetAttribute("BusoEnabled")) then
+					return
+				end
+
+				if p5 ~= "Gun" then
+					t:PlayMeleeHitParticles(p2, p6, p4)
+				end
+
+				v20 = p2:FindFirstChildOfClass("Highlight")
+
+				if not v20 then
+					v21 = WrapHighlight(script.DamageHighlight):Clone()
+					v21.Parent = p2
+					TweenService:Create(v21, TweenInfo.new(0.2), {
+						FillTransparency = 0.5
+					}):Play()
+					task.delay(0.2, function() --[[ Line: 1113 | Upvalues: TweenService (ref), v21 (copy) ]]
+						TweenService:Create(v21, TweenInfo.new(0.2), {
+							FillTransparency = 1
+						}):Play()
+						task.wait(0.2)
+						v21:Destroy()
+					end)
+
+					return true
+				end
+
+				if not v20:GetAttribute("__FillColor") then
+					return true
+				end
+
+				v22 = Color3.fromRGB(138, 0, 0)
+				TweenService:Create(v20, TweenInfo.new(0.2), {
+					FillColor = v22
+				}):Play()
+				task.delay(0.2, function() --[[ Line: 1100 | Upvalues: TweenService (ref), v20 (copy) ]]
+					TweenService:Create(v20, TweenInfo.new(0.2), {
+						FillColor = v20:GetAttribute("__FillColor")
+					}):Play()
+				end)
+
+				return true
+			end
+
+			if v6 and v8 <= v13 - v14 or not v6 then
+				return
+			end
+
+			if not v1 and (p2:GetAttribute("FruitType") == "Logia" and not p3:GetAttribute("BusoEnabled")) then
+				return
+			end
+
+			if p5 ~= "Gun" then
+				t:PlayMeleeHitParticles(p2, p6, p4)
+			end
+
+			v20 = p2:FindFirstChildOfClass("Highlight")
+
+			if not v20 then
+				v21 = WrapHighlight(script.DamageHighlight):Clone()
+				v21.Parent = p2
+				TweenService:Create(v21, TweenInfo.new(0.2), {
+					FillTransparency = 0.5
+				}):Play()
+				task.delay(0.2, function() --[[ Line: 1113 | Upvalues: TweenService (ref), v21 (copy) ]]
+					TweenService:Create(v21, TweenInfo.new(0.2), {
+						FillTransparency = 1
+					}):Play()
+					task.wait(0.2)
+					v21:Destroy()
+				end)
+
+				return true
+			end
+
+			if not v20:GetAttribute("__FillColor") then
+				return true
+			end
+
+			v22 = Color3.fromRGB(138, 0, 0)
+			TweenService:Create(v20, TweenInfo.new(0.2), {
+				FillColor = v22
+			}):Play()
+			task.delay(0.2, function() --[[ Line: 1100 | Upvalues: TweenService (ref), v20 (copy) ]]
+				TweenService:Create(v20, TweenInfo.new(0.2), {
+					FillColor = v20:GetAttribute("__FillColor")
+				}):Play()
+			end)
+
+			return true
+		end
+
+		if v19 and (v19:FindFirstChild("Logia") and not p3:GetAttribute("BusoEnabled")) then
+			if v6 and v8 <= v13 - v14 or not v6 then
+				return
+			end
+		elseif v19 and (v19:FindFirstChild("LogiaDough") and (v1 and (v1:GetAttribute("KenActive") and not p3:GetAttribute("BusoEnabled")))) and (v6 and v8 <= v13 - v14 or not v6) then
+			return
+		end
+	end
+
+	if not v1 and (p2:GetAttribute("FruitType") == "Logia" and not p3:GetAttribute("BusoEnabled")) then
+		return
+	end
+
+	if p5 ~= "Gun" then
+		t:PlayMeleeHitParticles(p2, p6, p4)
+	end
+
+	v20 = p2:FindFirstChildOfClass("Highlight")
+
+	if not v20 then
+		v21 = WrapHighlight(script.DamageHighlight):Clone()
+		v21.Parent = p2
+		TweenService:Create(v21, TweenInfo.new(0.2), {
+			FillTransparency = 0.5
+		}):Play()
+		task.delay(0.2, function() --[[ Line: 1113 | Upvalues: TweenService (ref), v21 (copy) ]]
+			TweenService:Create(v21, TweenInfo.new(0.2), {
+				FillTransparency = 1
+			}):Play()
+			task.wait(0.2)
+			v21:Destroy()
+		end)
+
+		return true
+	end
+
+	if not v20:GetAttribute("__FillColor") then
+		return true
+	end
+
+	v22 = Color3.fromRGB(138, 0, 0)
+	TweenService:Create(v20, TweenInfo.new(0.2), {
+		FillColor = v22
+	}):Play()
+	task.delay(0.2, function() --[[ Line: 1100 | Upvalues: TweenService (ref), v20 (copy) ]]
+		TweenService:Create(v20, TweenInfo.new(0.2), {
+			FillColor = v20:GetAttribute("__FillColor")
+		}):Play()
+	end)
+
+	return true
+end
+function t.IsGunReloading(p1, p2) --[[ IsGunReloading | Line: 1122 | Upvalues: v1 (copy) ]]
+	if v1 then
+		return not p2.Enabled or (p2:GetAttribute("IsReloading") or p2:GetAttribute("UnequipAutoReloading"))
+	end
+
+	return not p2.Enabled or (p2:GetAttribute("IsReloading_Client") or p2:GetAttribute("UnequipAutoReloading"))
+end
+
+local v9 = RaycastParams.new()
+
+v9.FilterType = Enum.RaycastFilterType.Exclude
+v9.FilterDescendantsInstances = { workspace._WorldOrigin, workspace.Characters, Enemies }
+
+local v10 = RaycastParams.new()
+
+v10.FilterType = Enum.RaycastFilterType.Exclude
+function t.GetTargetPosition(p1, p2, p3, p4, p5) --[[ GetTargetPosition | Line: 1138 | Upvalues: v10 (copy), v9 (copy) ]]
+	debug.profilebegin("GetTargetPosition")
+
+	local v1 = p4 or (1 / 0)
+	local v2 = p3 - p2
+
+	if v1 < v2.Magnitude then
+		p3 = p2 + v2.Unit * v1
+	end
+
+	if p5 then
+		v10.FilterDescendantsInstances = { workspace._WorldOrigin, p5 }
+	end
+
+	local v7 = workspace:Raycast(p2, p3 - p2, p5 and v10 or v9)
+
+	if v7 then
+		p3 = v7.Position
+	end
+
+	debug.profileend()
+
+	return p3
+end
+
+return t

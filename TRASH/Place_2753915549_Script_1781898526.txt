@@ -1,0 +1,150 @@
+-- https://lua.expert/
+local LocalPlayer = game.Players.LocalPlayer
+local scriptParent = script.Parent
+local Mouse = require(game.ReplicatedStorage.Mouse)
+local Util = require(game.ReplicatedStorage.Util)
+local fruitClient = require(game.ReplicatedStorage.FruitClient)(script, getfenv())
+
+if not script.Parent.Parent:IsA("Model") then
+	repeat
+		script.Parent.AncestryChanged:wait()
+	until script.Parent.Parent:IsA("Model")
+end
+
+local Character = game.Players.LocalPlayer.Character
+local HumanoidRootPart = Character.HumanoidRootPart
+local Humanoid = Character.Humanoid
+local Effect = require(game.ReplicatedStorage.Effect)
+
+Util.Anims:Preload("CombatZ")
+Util.Anims:Preload("CombatX")
+Util.Anims:Preload("CombatZCharge")
+Util.Anims:Preload("CombatXCharge")
+fruitClient.add(Enum.KeyCode.Z, function(p1, p2, p3) --[[ Line: 23 | Upvalues: Util (copy), Character (copy), Humanoid (copy), HumanoidRootPart (copy), Mouse (copy), scriptParent (copy), Effect (copy), LocalPlayer (copy) ]]
+	local chargeAnim = Util.Anims:Get(Character, "CombatZCharge")
+
+	v12:Play()
+	Humanoid.AutoRotate = false
+
+	local cframeConstructor = CFrame.new
+	local rootPos = HumanoidRootPart.CFrame.p
+	local targetX = Mouse.Hit.p.x
+	local targetY = HumanoidRootPart.CFrame.p.y
+	local targetZ = Mouse.Hit.p.z
+	local targetCFrame = cframeConstructor(rootPos, Vector3.new(targetX, targetY, targetZ))
+	local bodyGyro = Util.BodyMover.new(Character):Create("BodyGyro", {
+		CFrame = targetCFrame
+	})
+	local bodyPosition = Util.BodyMover.new(Character):Create("BodyPosition", {
+		Position = HumanoidRootPart.Position
+	})
+
+	script.Parent.RemoteEvent:FireServer(Mouse.Hit.p)
+	HumanoidRootPart.CFrame = CFrame.new(HumanoidRootPart.Position, Mouse.Hit.p)
+
+	local attackFinished = false
+
+	task.spawn(function() --[[ Line: 36 | Upvalues: scriptParent (ref), Character (ref), attackFinished (ref), HumanoidRootPart (ref), Mouse (ref), bodyGyro (copy) ]]
+		while scriptParent:IsDescendantOf(Character) and not attackFinished do
+			bodyGyro:Set(CFrame.new(HumanoidRootPart.CFrame.p, Vector3.new(Mouse.Hit.p.x, HumanoidRootPart.CFrame.p.y, Mouse.Hit.p.z)))
+			script.Parent.RemoteEvent:FireServer(Mouse.Hit.p)
+			wait()
+		end
+	end)
+	task.spawn(function() --[[ Line: 45 | Upvalues: attackFinished (ref), chargeAnim (copy), Util (ref), Character (ref), bodyPosition (copy), HumanoidRootPart (ref), Mouse (ref), Effect (ref), LocalPlayer (ref) ]]
+		local cframeConstructor2, rootPos2, targetX2, targetY2, targetZ2, hitCFrame, hitPos, combatEffect, effectParams, hitX, rootY, hitZ
+
+		if not script.Parent.Holding.Value then
+			attackFinished = true
+			chargeAnim:Stop()
+			Util.Anims:Get(Character, "CombatZ"):Play()
+			bodyPosition:Destroy()
+			cframeConstructor2 = CFrame.new
+			rootPos2 = HumanoidRootPart.CFrame.p
+			targetX2 = Mouse.Hit.p.x
+			targetY2 = HumanoidRootPart.CFrame.p.y
+			targetZ2 = Mouse.Hit.p.z
+			hitCFrame = cframeConstructor2(rootPos2, Vector3.new(targetX2, targetY2, targetZ2))
+			Util.BodyMover.new(Character):Create("BodyVelocity", {
+				Duration = 0.25,
+				Velocity = hitCFrame.lookVector * 35 * 4
+			})
+			Util.CameraShaker:ShakeOnce(9, 7, 0.1, 1, Vector3.new(1, 1, 1), Vector3.new(1, 1, 5))
+			hitPos = Mouse.Hit.p
+			task.wait(0.0666)
+			combatEffect = Effect.new("Combat2.Z")
+			effectParams = {
+				plr = LocalPlayer,
+				hrp = HumanoidRootPart,
+				CFrame = hitCFrame
+			}
+			hitX = hitPos.x
+			rootY = HumanoidRootPart.CFrame.p.y
+			hitZ = hitPos.z
+			effectParams.mouse = Vector3.new(hitX, rootY, hitZ)
+			combatEffect:play(effectParams)
+
+			return
+		end
+
+		script.Parent.Holding.Changed:Wait()
+		attackFinished = true
+		chargeAnim:Stop()
+		Util.Anims:Get(Character, "CombatZ"):Play()
+		bodyPosition:Destroy()
+		cframeConstructor2 = CFrame.new
+		rootPos2 = HumanoidRootPart.CFrame.p
+		targetX2 = Mouse.Hit.p.x
+		targetY2 = HumanoidRootPart.CFrame.p.y
+		targetZ2 = Mouse.Hit.p.z
+		hitCFrame = cframeConstructor2(rootPos2, Vector3.new(targetX2, targetY2, targetZ2))
+		Util.BodyMover.new(Character):Create("BodyVelocity", {
+			Duration = 0.25,
+			Velocity = hitCFrame.lookVector * 35 * 4
+		})
+		Util.CameraShaker:ShakeOnce(9, 7, 0.1, 1, Vector3.new(1, 1, 1), Vector3.new(1, 1, 5))
+		hitPos = Mouse.Hit.p
+		task.wait(0.0666)
+		combatEffect = Effect.new("Combat2.Z")
+		effectParams = {
+			plr = LocalPlayer,
+			hrp = HumanoidRootPart,
+			CFrame = hitCFrame
+		}
+		hitX = hitPos.x
+		rootY = HumanoidRootPart.CFrame.p.y
+		hitZ = hitPos.z
+		effectParams.mouse = Vector3.new(hitX, rootY, hitZ)
+		combatEffect:play(effectParams)
+	end)
+	script.Parent.RemoteFunction:InvokeServer("Z", targetCFrame)
+	attackFinished = true
+	bodyPosition:Destroy()
+	bodyGyro:Destroy()
+	Humanoid.AutoRotate = true
+	v12:Stop(0)
+end)
+v2.add(Enum.KeyCode.X, function(p1, p2, p3) --[[ Line: 81 | Upvalues: Util (copy), Character (copy), HumanoidRootPart (copy) ]]
+	local v1 = Util.BodyMover.new(Character):Create("BodyPosition", {
+		Position = HumanoidRootPart.Position
+	})
+	local v2 = Util.Anims:Get(Character, "CombatXCharge")
+
+	v2:Play()
+	task.spawn(function() --[[ Line: 87 | Upvalues: v2 (copy), Util (ref), Character (ref) ]]
+		if not script.Parent.Holding.Value then
+			v2:Stop()
+			Util.Anims:Get(Character, "CombatX"):Play()
+
+			return
+		end
+
+		script.Parent.Holding.Changed:Wait()
+		v2:Stop()
+		Util.Anims:Get(Character, "CombatX"):Play()
+	end)
+	script.Parent.RemoteFunction:InvokeServer("X")
+	Util.CameraShaker:ShakeOnce(10, 8, 0.1, 1, Vector3.new(1, 1, 1), (Vector3.new(1, 1, 5)))
+	wait(0.5)
+	v1:Destroy()
+end)

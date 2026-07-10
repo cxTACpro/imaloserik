@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Script Manager</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #1e1e1e; color: #cccccc; overflow: hidden; height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+#titleBar {
+  display: flex; align-items: center; height: 30px;
+  background: #323233; color: #cccccc; font-size: 12px;
+  padding: 0 14px; user-select: none; flex-shrink: 0;
+}
+
+#tabBar {
+  display: flex; background: #252526; height: 35px;
+  overflow-x: auto; overflow-y: hidden; align-items: stretch;
+  scrollbar-width: thin; flex-shrink: 0;
+}
+#tabBar::-webkit-scrollbar { height: 3px; }
+#tabBar::-webkit-scrollbar-thumb { background: #424242; border-radius: 4px; }
+#tabBar::-webkit-scrollbar-track { background: transparent; }
+#addTabBtn {
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; color: #969696; border: none;
+  width: 30px; min-width: 30px; cursor: pointer; font-size: 18px; line-height: 1;
+  flex-shrink: 0; transition: color 0.1s;
+}
+#addTabBtn:hover { color: #ffffff; }
+.tab.dragging { opacity: 0.4; }
+.tab.drag-over { background: #333 !important; }
+
+.tab {
+  display: flex; align-items: center; gap: 5px;
+  background: #2d2d2d; color: #969696; border: none;
+  padding: 0 8px 0 10px; cursor: pointer; font-size: 13px;
+  white-space: nowrap; position: relative; user-select: none;
+  border-right: 1px solid #252526; min-width: 0;
+  transition: background 0.1s;
+}
+.tab::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 1px; background: transparent;
+}
+.tab.active::before { background: #007acc; }
+.tab:hover { background: #2a2a2a; }
+.tab.active {
+  background: #1e1e1e; color: #ffffff;
+  border-bottom: 1px solid #1e1e1e;
+}
+.tab .icon { flex-shrink: 0; font-size: 12px; }
+.tab .label { overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+.tab .close {
+  display: flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 4px; font-size: 15px;
+  color: #969696; flex-shrink: 0; line-height: 1; margin-left: 2px;
+  visibility: hidden;
+}
+.tab:hover .close, .tab.active .close { visibility: visible; }
+.tab .close:hover { background: #424242; color: #ffffff; }
+
+#navBar {
+  display: flex; align-items: center; gap: 4px;
+  background: #1e1e1e; padding: 4px 10px; border-bottom: 1px solid #3c3c3c;
+  flex-shrink: 0; height: 30px;
+}
+#navBar button {
+  background: #3c3c3c; color: #cccccc; border: none;
+  padding: 3px 10px; cursor: pointer; font-size: 12px; border-radius: 3px;
+}
+#navBar button:hover { background: #505050; }
+#navBar button:disabled { opacity: 0.4; cursor: default; background: #3c3c3c; }
+#navCounter { color: #969696; font-size: 12px; min-width: 50px; text-align: center; }
+#navName { color: #969696; font-size: 12px; margin-left: 8px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+#editorArea {
+  display: flex; flex-direction: column;
+  height: calc(100vh - 30px - 35px - 30px - 40px - 24px);
+}
+textarea {
+  flex: 1; background: #1e1e1e; color: #d4d4d4;
+  border: none; padding: 16px 20px; resize: none; outline: none;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace;
+  font-size: 14px; line-height: 1.6; tab-size: 2;
+}
+textarea::placeholder { color: #5a5a5a; }
+
+#buttonBar {
+  display: flex; align-items: center; gap: 4px;
+  background: #252526; border-top: 1px solid #3c3c3c;
+  padding: 4px 10px; flex-shrink: 0; flex-wrap: wrap;
+  min-height: 40px;
+}
+#buttonBar button {
+  background: #3c3c3c; color: #cccccc; border: none;
+  padding: 5px 12px; cursor: pointer; font-size: 12px; border-radius: 3px;
+  white-space: nowrap;
+}
+#buttonBar button:hover { background: #505050; }
+#buttonBar button:active { transform: scale(0.97); }
+#buttonBar button:disabled { opacity: 0.35; cursor: default; background: #3c3c3c; transform: none; }
+#buttonBar button.primary { background: #0e639c; color: #fff; }
+#buttonBar button.primary:hover { background: #1177bb; }
+.separator { width: 1px; background: #3c3c3c; margin: 0 4px; height: 22px; flex-shrink: 0; align-self: center; }
+.spacer { flex: 1; }
+
+.dropdown { position: relative; display: inline-block; }
+.dropdown-content {
+  display: none; position: absolute; right: 0; bottom: 100%; margin-bottom: 4px;
+  background: #252526; min-width: 220px; max-height: 260px; overflow-y: auto;
+  border: 1px solid #3c3c3c; border-radius: 4px;
+  box-shadow: 0 -8px 24px rgba(0,0,0,0.4); z-index: 1000;
+}
+.dropdown-content.show { display: block; }
+.dropdown-item {
+  padding: 7px 14px; cursor: pointer; color: #cccccc; font-size: 13px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.dropdown-item:hover { background: #094771; }
+.dropdown-item.active { background: #094771; color: #fff; }
+.dropdown-item .di-id { color: #666; font-size: 11px; margin-left: 8px; }
+.dropdown-item .di-icon { margin-right: 6px; }
+
+#statusBar {
+  display: flex; align-items: center; gap: 12px;
+  background: #007acc; color: #fff; height: 24px;
+  padding: 0 12px; font-size: 12px; flex-shrink: 0;
+}
+#statusBar .left { display: flex; align-items: center; gap: 14px; flex: 1; }
+#statusBar .right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.sbar-item { display: flex; align-items: center; gap: 4px; }
+.unsaved-dot { color: #ffcc00; font-size: 14px; line-height: 1; }
+.saved-dot { color: #4ec9b0; font-size: 14px; line-height: 1; }
+
+#fileInput { display: none; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #424242; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
+
+#confirmOverlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 9999; align-items: center; justify-content: center;
+}
+#confirmBox {
+  background: #252526; border: 1px solid #3c3c3c; border-radius: 8px;
+  padding: 24px; min-width: 320px; box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+#confirmBox p { margin-bottom: 16px; font-size: 14px; line-height: 1.4; }
+#confirmBox .btns { display: flex; gap: 8px; justify-content: flex-end; }
+#confirmBox button {
+  padding: 6px 20px; border: none; border-radius: 3px; cursor: pointer; font-size: 13px;
+}
+#confirmBox .btn-yes { background: #0e639c; color: #fff; }
+#confirmBox .btn-yes:hover { background: #1177bb; }
+#confirmBox .btn-no { background: #3c3c3c; color: #ccc; }
+#confirmBox .btn-no:hover { background: #505050; }
+
+.tooltip { position: relative; }
+.tooltip:hover::after {
+  content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%;
+  transform: translateX(-50%); background: #3c3c3c; color: #ccc;
+  padding: 4px 10px; border-radius: 4px; font-size: 11px; white-space: nowrap;
+  z-index: 900; border: 1px solid #505050;
+}
+</style>
+</head>
+<body>
+
+<div id="titleBar">&#9679; Script Manager</div>
+
+<div id="tabBar"></div>
+
+<div id="navBar">
+  <button class="tooltip" data-tip="Previous tab" onclick="previousTab()" id="prevTabBtn" disabled>&#9664;</button>
+  <span id="navCounter">0/0</span>
+  <button class="tooltip" data-tip="Next tab" onclick="nextTab()" id="nextTabBtn" disabled>&#9654;</button>
+  <span id="navName"></span>
+  <div class="spacer"></div>
+  <div class="dropdown">
+    <button class="tooltip" data-tip="Tab list" onclick="toggleDropdown()">&#9660; <span id="dropdownLabel">Tabs</span></button>
+    <div class="dropdown-content" id="dropdownContent"></div>
+  </div>
+</div>
+
+<div id="editorArea">
+  <textarea id="scriptBox" placeholder="-- Enter your Lua script here..." spellcheck="false"></textarea>
+</div>
+
+<div id="buttonBar">
+  <button class="primary tooltip" data-tip="Execute script (Ctrl+Enter)" onclick="executeScript()">&#9654; Execute</button>
+  <button class="tooltip" data-tip="Load file from disk" onclick="loadFile()">&#128193; Loadfile</button>
+  <button class="tooltip" data-tip="Clear editor content" onclick="clearScript()">&#128465; Clear</button>
+
+  <div class="separator"></div>
+
+  <button class="tooltip" data-tip="Create new tab" onclick="newTab()">&#65291; New</button>
+  <button class="tooltip" data-tip="Close current tab" onclick="closeCurrentTab()" id="closeTabBtn" disabled>&#10005; Close</button>
+  <button class="tooltip" data-tip="Close all tabs" onclick="closeAllTabs()" id="closeAllBtn" disabled>&#10005;&#10005; All</button>
+
+  <div class="separator"></div>
+
+  <button class="tooltip" data-tip="Save tab content" onclick="saveTab()" id="saveTabBtn" disabled>&#128190; Save</button>
+  <button class="tooltip" data-tip="Rename tab" onclick="renameTab()" id="renameTabBtn" disabled>&#9998; Rename</button>
+  <button class="tooltip" data-tip="Duplicate tab" onclick="duplicateTab()" id="duplicateBtn" disabled>&#128203; Dup</button>
+</div>
+
+<div id="statusBar">
+  <div class="left">
+    <span id="status">Ready</span>
+  </div>
+  <div class="right">
+    <span class="sbar-item" id="sbarCounter"></span>
+    <span class="sbar-item" id="sbarName"></span>
+    <span class="sbar-item" id="sbarServerId"></span>
+    <span class="sbar-item" id="sbarUnsaved"></span>
+    <span id="cursorPos">Ln 1, Col 1</span>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept=".lua,.txt,.js,.luau" onchange="handleFile(event)">
+
+<div id="confirmOverlay">
+  <div id="confirmBox">
+    <p id="confirmMsg">Are you sure?</p>
+    <div class="btns">
+      <button class="btn-no" onclick="confirmNo()">Cancel</button>
+      <button class="btn-yes" onclick="confirmYes()">OK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let tabs = {};
+let tabOrder = [];
+let activeId = null;
+let nextTabId = 1;
+let confirmCallback = null;
+
+const ta = document.getElementById('scriptBox');
+
+ta.addEventListener('input', function() {
+  if (activeId && tabs[activeId]) {
+    tabs[activeId].content = ta.value;
+    if (tabs[activeId].content !== tabs[activeId].savedContent) {
+      if (!tabs[activeId].hasChanges) {
+        tabs[activeId].hasChanges = true;
+        updateTabLabel(activeId);
+        updateStatusBar();
+      }
+    } else {
+      if (tabs[activeId].hasChanges) {
+        tabs[activeId].hasChanges = false;
+        updateTabLabel(activeId);
+        updateStatusBar();
+      }
+    }
+  }
+  updateCursor();
+});
+
+ta.addEventListener('keyup', updateCursor);
+ta.addEventListener('click', updateCursor);
+
+function updateCursor() {
+  const idx = ta.selectionStart;
+  const before = ta.value.substring(0, idx);
+  const lines = before.split('\n');
+  document.getElementById('cursorPos').textContent = `Ln ${lines.length}, Col ${lines[lines.length-1].length + 1}`;
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); executeScript(); }
+  if (e.ctrlKey && e.key === 'n') { e.preventDefault(); newTab(); }
+  if (e.ctrlKey && e.key === 'w') { e.preventDefault(); if (activeId) closeTab(activeId); }
+  if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveTab(); }
+  if (e.ctrlKey && e.key === 'Tab') {
+    e.preventDefault();
+    if (e.shiftKey) previousTab(); else nextTab();
+  }
+});
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.dropdown')) {
+    document.getElementById('dropdownContent').classList.remove('show');
+  }
+});
+
+// ── Confirm Dialog ──
+function confirm(msg, cb) {
+  document.getElementById('confirmMsg').textContent = msg;
+  document.getElementById('confirmOverlay').style.display = 'flex';
+  confirmCallback = cb;
+}
+function confirmYes() {
+  document.getElementById('confirmOverlay').style.display = 'none';
+  if (confirmCallback) { confirmCallback(); confirmCallback = null; }
+}
+function confirmNo() {
+  document.getElementById('confirmOverlay').style.display = 'none';
+  confirmCallback = null;
+}
+
+// ── Reorder Tabs ──
+function reorderTabs(fromId, toId) {
+  const fromIdx = tabOrder.indexOf(fromId);
+  const toIdx = tabOrder.indexOf(toId);
+  if (fromIdx === -1 || toIdx === -1) return;
+  tabOrder.splice(fromIdx, 1);
+  const newToIdx = tabOrder.indexOf(toId);
+  tabOrder.splice(newToIdx + (fromIdx < newToIdx ? 1 : 0), 0, fromId);
+  const bar = document.getElementById('tabBar');
+  const children = Array.from(bar.querySelectorAll('.tab'));
+  const fromEl = children.find(function(t) { return parseInt(t.dataset.id) === fromId; });
+  const toEl = children.find(function(t) { return parseInt(t.dataset.id) === toId; });
+  if (fromEl && toEl) {
+    bar.removeChild(fromEl);
+    bar.insertBefore(fromEl, fromIdx < toIdx ? toEl.nextSibling : toEl);
+  }
+}
+
+// ── New Tab ──
+function newTab() {
+  var id = nextTabId;
+  var used = {};
+  tabOrder.forEach(function(i) { used[i] = true; });
+  while (used[id]) { id++; }
+  nextTabId = id + 1;
+  tabs[id] = { content: '', name: 'Tab ' + id, savedContent: '', serverId: null, hasChanges: false, error: false };
+  tabOrder.push(id);
+  ensureAddBtn();
+  renderTab(id);
+  ensureAddBtn();
+  switchTab(id);
+  ta.focus();
+  setStatus('New tab #' + id);
+  updateNavButtons();
+  updateDropdown();
+}
+
+// ── Add Tab Button ──
+function ensureAddBtn() {
+  let btn = document.getElementById('addTabBtn');
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.id = 'addTabBtn';
+    btn.textContent = '+';
+    btn.title = 'New tab';
+    btn.onclick = function() { newTab(); };
+    document.getElementById('tabBar').appendChild(btn);
+  }
+}
+
+// ── Render Tab Element ──
+function renderTab(id) {
+  const d = tabs[id];
+  if (!d) return;
+  const bar = document.getElementById('tabBar');
+  const div = document.createElement('div');
+  div.className = 'tab';
+  div.dataset.id = id;
+  div.title = d.name;
+  div.draggable = true;
+
+  const icon = document.createElement('span');
+  icon.className = 'icon';
+  icon.textContent = d.serverId ? '\uD83D\uDCBE' : (d.hasChanges ? '\u25CF' : '\uD83D\uDCC4');
+
+  const label = document.createElement('span');
+  label.className = 'label';
+  label.textContent = d.name;
+
+  const close = document.createElement('span');
+  close.className = 'close';
+  close.textContent = '\u00d7';
+  close.onclick = function(e) { e.stopPropagation(); closeTab(id); };
+
+  div.appendChild(icon);
+  div.appendChild(label);
+  div.appendChild(close);
+
+  div.onclick = function(e) { if (e.target === close) return; switchTab(id); };
+
+  div.addEventListener('contextmenu', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    ctxTabId = id;
+    showCtxMenu(e.clientX, e.clientY);
+  });
+
+  div.addEventListener('mousedown', function(e) {
+    if (e.button === 1) { e.preventDefault(); closeTab(id); }
+  });
+
+  // ── Drag & Drop Reorder ──
+  div.addEventListener('dragstart', function(e) {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', id);
+    this.classList.add('dragging');
+  });
+  div.addEventListener('dragend', function() {
+    this.classList.remove('dragging');
+    document.querySelectorAll('.tab.drag-over').forEach(function(t) { t.classList.remove('drag-over'); });
+  });
+  div.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (id !== parseInt(div.dataset.id)) return;
+    this.classList.add('drag-over');
+  });
+  div.addEventListener('dragleave', function() {
+    this.classList.remove('drag-over');
+  });
+  div.addEventListener('drop', function(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+    const fromId = parseInt(e.dataTransfer.getData('text/plain'));
+    if (fromId && fromId !== id) reorderTabs(fromId, id);
+  });
+
+  const addBtn = document.getElementById('addTabBtn');
+  if (addBtn) bar.insertBefore(div, addBtn);
+  else bar.appendChild(div);
+}
+
+// ── Switch Tab ──
+function switchTab(id) {
+  if (!tabs[id]) return;
+
+  if (activeId && tabs[activeId]) {
+    tabs[activeId].content = ta.value;
+  }
+
+  activeId = id;
+  document.querySelectorAll('#tabBar .tab').forEach(t => t.classList.remove('active'));
+  const el = document.querySelector(`#tabBar .tab[data-id="${id}"]`);
+  if (el) {
+    el.classList.add('active');
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }
+
+  ta.value = tabs[id].content;
+  updateStatusBar();
+  updateNavButtons();
+  updateCursor();
+  updateDropdown();
+}
+
+// ── Close Tab ──
+function closeTab(id) {
+  if (!tabs[id]) return;
+  const d = tabs[id];
+  function doClose() {
+    delete tabs[id];
+    tabOrder = tabOrder.filter(i => i !== id);
+    const el = document.querySelector(`.tab[data-id="${id}"]`);
+    if (el) el.remove();
+    if (activeId === id) {
+      if (tabOrder.length > 0) switchTab(tabOrder[tabOrder.length - 1]);
+      else { activeId = null; ta.value = ''; ensureAddBtn(); updateStatusBar(); setStatus('No tabs open'); updateNavButtons(); updateDropdown(); }
+    } else {
+      ensureAddBtn();
+      updateStatusBar();
+      updateNavButtons();
+      updateDropdown();
+    }
+  }
+  if (d.hasChanges) {
+    confirm('Tab "' + d.name + '" has unsaved changes. Close anyway?', doClose);
+  } else {
+    doClose();
+  }
+}
+
+function closeCurrentTab() {
+  if (activeId) closeTab(activeId);
+}
+
+function closeAllTabs() {
+  if (tabOrder.length === 0) return;
+  confirm('Close all tabs? Unsaved changes will be lost.', function() {
+    const ids = tabOrder.slice();
+    ids.forEach(function(i) { delete tabs[i]; });
+    tabOrder = [];
+    document.getElementById('tabBar').innerHTML = '';
+    activeId = null;
+    ta.value = '';
+    ensureAddBtn();
+    updateStatusBar();
+    setStatus('All tabs closed');
+    updateNavButtons();
+    updateDropdown();
+    newTab();
+  });
+}
+
+function closeOthers() {
+  if (!activeId || tabOrder.length < 2) return;
+  const others = tabOrder.filter(function(i) { return i !== activeId; });
+  const hasUnsaved = others.some(function(i) { return tabs[i] && tabs[i].hasChanges; });
+  function doClose() {
+    others.forEach(function(i) {
+      delete tabs[i];
+      const el = document.querySelector(`.tab[data-id="${i}"]`);
+      if (el) el.remove();
+    });
+    tabOrder = [activeId];
+    updateStatusBar();
+    setStatus('Closed other tabs');
+    updateNavButtons();
+    updateDropdown();
+  }
+  if (hasUnsaved) {
+    confirm('Some tabs have unsaved changes. Close them anyway?', doClose);
+  } else {
+    doClose();
+  }
+}
+
+// ── Context Menu ──
+const ctxMenu = document.createElement('div');
+ctxMenu.id = 'ctxMenu';
+Object.assign(ctxMenu.style, {
+  display: 'none', position: 'fixed', background: '#252526', zIndex: '1000',
+  border: '1px solid #3c3c3c', minWidth: '200px', padding: '4px 0',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
+});
+document.body.appendChild(ctxMenu);
+let ctxTabId = null;
+
+function showCtxMenu(x, y) {
+  ctxMenu.innerHTML = '';
+  const items = [
+    { label: 'Close', fn: function() { if (ctxTabId) closeTab(ctxTabId); } },
+    { label: 'Close Others', fn: function() {
+      if (!ctxTabId) return;
+      tabOrder.forEach(function(i) { if (i !== ctxTabId) closeTab(i); });
+    }},
+    { label: 'Close All', fn: function() {
+      tabOrder.slice().forEach(function(i) { closeTab(i); });
+    }},
+    { sep: true },
+    { label: 'Close to the Right', fn: function() {
+      const idx = tabOrder.indexOf(ctxTabId);
+      if (idx >= 0) tabOrder.slice(idx + 1).forEach(function(i) { closeTab(i); });
+    }},
+    { sep: true },
+    { label: 'Rename', fn: function() { if (ctxTabId) { switchTab(ctxTabId); renameTab(); } } },
+    { label: 'Duplicate', fn: function() { if (ctxTabId) { switchTab(ctxTabId); duplicateTab(); } } },
+  ];
+  items.forEach(function(item) {
+    if (item.sep) {
+      const sep = document.createElement('div');
+      sep.style.cssText = 'height:1px;background:#3c3c3c;margin:4px 8px;';
+      ctxMenu.appendChild(sep);
+    } else {
+      const el = document.createElement('div');
+      el.style.cssText = 'padding:6px 20px;font-size:13px;cursor:pointer;color:#ccc;';
+      el.textContent = item.label;
+      el.onmouseover = function() { this.style.background = '#094771'; };
+      el.onmouseout = function() { this.style.background = 'transparent'; };
+      el.onclick = function() { ctxMenu.style.display = 'none'; item.fn(); };
+      ctxMenu.appendChild(el);
+    }
+  });
+  ctxMenu.style.display = 'block';
+  ctxMenu.style.left = x + 'px';
+  ctxMenu.style.top = y + 'px';
+  const rect = ctxMenu.getBoundingClientRect();
+  if (rect.right > window.innerWidth) ctxMenu.style.left = (window.innerWidth - rect.width - 10) + 'px';
+  if (rect.bottom > window.innerHeight) ctxMenu.style.top = (window.innerHeight - rect.height - 10) + 'px';
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#ctxMenu')) ctxMenu.style.display = 'none';
+});
+
+// ── Navigation ──
+function previousTab() {
+  if (tabOrder.length < 2 || !activeId) return;
+  const idx = tabOrder.indexOf(activeId);
+  const prev = idx <= 0 ? tabOrder[tabOrder.length - 1] : tabOrder[idx - 1];
+  switchTab(prev);
+}
+
+function nextTab() {
+  if (tabOrder.length < 2 || !activeId) return;
+  const idx = tabOrder.indexOf(activeId);
+  const next = idx >= tabOrder.length - 1 ? tabOrder[0] : tabOrder[idx + 1];
+  switchTab(next);
+}
+
+function updateNavButtons() {
+  const hasTabs = tabOrder.length > 0;
+  document.getElementById('prevTabBtn').disabled = !hasTabs || tabOrder.length < 2;
+  document.getElementById('nextTabBtn').disabled = !hasTabs || tabOrder.length < 2;
+  document.getElementById('closeTabBtn').disabled = !hasTabs || !activeId;
+  document.getElementById('closeAllBtn').disabled = !hasTabs;
+  document.getElementById('saveTabBtn').disabled = !hasTabs || !activeId;
+  document.getElementById('renameTabBtn').disabled = !hasTabs || !activeId;
+  document.getElementById('duplicateBtn').disabled = !hasTabs || !activeId;
+
+  let counter = '0/0';
+  if (activeId && tabOrder.length > 0) {
+    const idx = tabOrder.indexOf(activeId);
+    counter = (idx + 1) + '/' + tabOrder.length;
+  } else if (tabOrder.length > 0) {
+    counter = '0/' + tabOrder.length;
+  }
+  document.getElementById('navCounter').textContent = counter;
+}
+
+// ── Tab Label Update ──
+function updateTabLabel(id) {
+  const d = tabs[id];
+  if (!d) return;
+  const el = document.querySelector(`.tab[data-id="${id}"]`);
+  if (!el) return;
+  const icon = el.querySelector('.icon');
+  const label = el.querySelector('.label');
+  if (icon) icon.textContent = d.serverId ? '\uD83D\uDCBE' : (d.hasChanges ? '\u25CF' : '\uD83D\uDCC4');
+  if (label) label.textContent = d.name + (d.hasChanges ? ' \u25CF' : '');
+  el.title = d.name + (d.serverId ? ' (ID: ' + d.serverId + ')' : '') + (d.hasChanges ? ' \u2022 unsaved' : '');
+}
+
+// ── Update Status Bar ──
+function updateStatusBar() {
+  const d = activeId && tabs[activeId] ? tabs[activeId] : null;
+
+  let counter = '';
+  if (activeId && tabOrder.length > 0) {
+    const idx = tabOrder.indexOf(activeId);
+    counter = (idx + 1) + '/' + tabOrder.length;
+  }
+  document.getElementById('sbarCounter').textContent = counter ? 'Tab ' + counter : '';
+
+  document.getElementById('sbarName').textContent = d ? d.name : '';
+  document.getElementById('sbarServerId').textContent = d && d.serverId ? 'ID: ' + d.serverId : '';
+
+  if (d && d.hasChanges) {
+    document.getElementById('sbarUnsaved').innerHTML = '<span class="unsaved-dot">\u25CF</span> Unsaved';
+  } else if (d && d.serverId) {
+    document.getElementById('sbarUnsaved').innerHTML = '<span class="saved-dot">\u25CF</span> Saved';
+  } else if (d) {
+    document.getElementById('sbarUnsaved').textContent = '';
+  } else {
+    document.getElementById('sbarUnsaved').textContent = '';
+  }
+
+  // Auto-update the permanent left status based on state
+  if (d) {
+    var statusEl = document.getElementById('status');
+    if (statusEl.textContent === 'Ready' || statusEl.textContent === 'No tabs open') {
+      statusEl.textContent = d.name + (d.hasChanges ? ' \u25CF' : '') + (d.serverId ? ' [#' + d.serverId + ']' : '');
+    }
+  }
+}
+
+// ── Save Tab ──
+function saveTab() {
+  if (!activeId || !tabs[activeId]) return;
+  const d = tabs[activeId];
+  d.savedContent = ta.value;
+  d.content = ta.value;
+  d.hasChanges = false;
+  updateTabLabel(activeId);
+  updateStatusBar();
+  setStatus('Tab "' + d.name + '" saved');
+}
+
+// ── Rename Tab ──
+function renameTab() {
+  if (!activeId || !tabs[activeId]) return;
+  const d = tabs[activeId];
+  const newName = prompt('Enter new tab name:', d.name);
+  if (newName && newName.trim()) {
+    d.name = newName.trim();
+    const el = document.querySelector(`.tab[data-id="${activeId}"]`);
+    if (el) {
+      const label = el.querySelector('.label');
+      if (label) label.textContent = d.name + (d.hasChanges ? ' \u25CF' : '');
+      el.title = d.name;
+    }
+    updateStatusBar();
+    updateDropdown();
+    setStatus('Renamed to "' + d.name + '"');
+  }
+}
+
+// ── Duplicate Tab ──
+function duplicateTab() {
+  if (!activeId || !tabs[activeId]) return;
+  const src = tabs[activeId];
+  const id = nextTabId++;
+  tabs[id] = {
+    content: src.content, name: src.name + ' (Copy)',
+    savedContent: src.content, serverId: null, hasChanges: false, error: false
+  };
+  tabOrder.push(id);
+  renderTab(id);
+  switchTab(id);
+  ta.focus();
+  setStatus('Duplicated as "' + tabs[id].name + '"');
+  updateNavButtons();
+  updateDropdown();
+}
+
+// ── Execute ──
+function executeScript() {
+  if (!activeId && ta.value.trim()) {
+    fetch('/execute', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({script: ta.value})
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      if (data.success) setStatus('Script #' + data.id + ' executed (no tab)');
+    }).catch(function(e) { setStatus('Error: ' + e); });
+    return;
+  }
+  const d = activeId && tabs[activeId] ? tabs[activeId] : null;
+  if (!d) { setStatus('No tab active'); return; }
+  d.content = ta.value;
+  fetch('/execute', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({script: d.content})
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.success) {
+      d.serverId = data.id;
+      d.savedContent = d.content;
+      d.hasChanges = false;
+      updateTabLabel(activeId);
+      updateStatusBar();
+      updateDropdown();
+      setStatus('Script #' + data.id + ' executed');
+    }
+  }).catch(function(e) { setStatus('Error: ' + e); });
+}
+
+// ── Clear ──
+function clearScript() {
+  ta.value = '';
+  if (activeId && tabs[activeId]) {
+    tabs[activeId].content = '';
+    tabs[activeId].hasChanges = tabs[activeId].savedContent !== '';
+    updateTabLabel(activeId);
+    updateStatusBar();
+  }
+  ta.focus();
+  updateCursor();
+  setStatus('Cleared');
+}
+
+// ── Load File ──
+function loadFile() { document.getElementById('fileInput').click(); }
+
+function handleFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    ta.value = e.target.result;
+    if (activeId && tabs[activeId]) {
+      tabs[activeId].content = e.target.result;
+      tabs[activeId].hasChanges = tabs[activeId].savedContent !== e.target.result;
+      updateTabLabel(activeId);
+      updateStatusBar();
+    }
+    updateCursor();
+    setStatus('Loaded: ' + file.name);
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function setStatus(msg) {
+  document.getElementById('status').textContent = msg;
+}
+
+// ── Dropdown ──
+function toggleDropdown() {
+  const dc = document.getElementById('dropdownContent');
+  const showing = dc.classList.contains('show');
+  dc.classList.toggle('show');
+  if (!showing) updateDropdown();
+}
+
+function updateDropdown() {
+  const dc = document.getElementById('dropdownContent');
+  dc.innerHTML = '';
+  if (tabOrder.length === 0) {
+    const item = document.createElement('div');
+    item.className = 'dropdown-item';
+    item.textContent = '(no tabs)';
+    item.style.color = '#666';
+    item.style.cursor = 'default';
+    dc.appendChild(item);
+    return;
+  }
+  tabOrder.forEach(function(id) {
+    const d = tabs[id];
+    if (!d) return;
+    const item = document.createElement('div');
+    item.className = 'dropdown-item';
+    if (id === activeId) item.classList.add('active');
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'di-icon';
+    iconSpan.textContent = d.serverId ? '\uD83D\uDCBE' : (d.hasChanges ? '\u25CF' : '\uD83D\uDCC4');
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = d.name;
+    nameSpan.style.flex = '1';
+    nameSpan.style.overflow = 'hidden';
+    nameSpan.style.textOverflow = 'ellipsis';
+    nameSpan.style.whiteSpace = 'nowrap';
+    const idSpan = document.createElement('span');
+    idSpan.className = 'di-id';
+    idSpan.textContent = '#' + id;
+    item.appendChild(iconSpan);
+    item.appendChild(nameSpan);
+    item.appendChild(idSpan);
+    item.onclick = function() { switchTab(id); dc.classList.remove('show'); };
+    dc.appendChild(item);
+  });
+}
+
+// ── Init: create first tab ──
+newTab();
+</script>
+</body>
+</html>
