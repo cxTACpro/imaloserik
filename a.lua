@@ -3,20 +3,25 @@ local module = loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACp
 local CollectionService = game:GetService("CollectionService")
 local nextChest
 local notif = game:GetService("StarterGui")
-
+local _=CollectionService:GetTagged("_ChestTagged")
+local chests = {}
+for i,v in pairs(_) do
+   if v:FindFirstChildWhichIsA("TouchTransmitter") then
+      table.insert(chests,v)
+   end
+end
 local PlaceID = game.PlaceId
 local AllIDs = {}
 local foundAnything = ""
 local actualHour = os.date("!*t").hour
 
 local FileSuccess = pcall(function()
-   AllIDs = game:GetService('HttpService'):JSONDecode(readfile("NotSameServers.json"))
+   AllIDs = game:GetService('HttpService'):JSONDecode(readfile("NotSameServersssssssssssssssssssssssssssssssssssssss.json"))
 end)
 if not FileSuccess then
    table.insert(AllIDs, actualHour)
-   writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
+   writefile("NotSameServersssssssssssssssssssssssssssssssssssssss.json", game:GetService('HttpService'):JSONEncode(AllIDs))
 end
-
 local function TPReturner()
    local Site
    if foundAnything == "" then
@@ -41,7 +46,7 @@ local function TPReturner()
             else
                if tonumber(actualHour) ~= tonumber(Existing) then
                   local delFile = pcall(function()
-                     delfile("NotSameServers.json")
+                     delfile("NotSameServersssssssssssssssssssssssssssssssssssssss.json")
                      AllIDs = {}
                      table.insert(AllIDs, actualHour)
                   end)
@@ -53,7 +58,7 @@ local function TPReturner()
             table.insert(AllIDs, ID)
             wait()
             pcall(function()
-               writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
+               writefile("NotSameServersssssssssssssssssssssssssssssssssssssss.json", game:GetService('HttpService'):JSONEncode(AllIDs))
                wait()
                game:GetService("ReplicatedStorage"):WaitForChild("__ServerBrowser"):InvokeServer("teleport", ID)
             end)
@@ -62,7 +67,6 @@ local function TPReturner()
       end
    end
 end
-
 local function ServerHop()
    task.spawn(function()
       while task.wait() do
@@ -75,58 +79,23 @@ local function ServerHop()
       end
    end)
 end
-
 function tpChest(c)
    local char  = Player.Character or Player.CharacterAdded:Wait()
    local hrp = char:FindFirstChild("HumanoidRootPart")
    if c and not module.playerHas(nil,"Fist of Darkness") then
-    module.VG.Tween(hrp,c:FindFirstChild("RootPart") or c.PrimaryPart,250,Vector3.new(0,1,0),true)
+      char.Humanoid.Sit = false
+      module.VG.Tween(hrp,c,300,Vector3.new(0,1,0),true)
    end
-   char.Humanoid.Sit = false
-   wait(0.1)
-   game:GetService("Debris"):AddItem(c, 0.1)
-   nextChest = getchest()
+   nextChest = module.VG.GetNearestXToBasePart(hrp, chests)
 end
-
-function getchest()
-   local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
-   if not hrp then return nil end
-   local minDist, nearest = math.huge, nil
-   for _, chest in pairs(CollectionService:GetTagged("_ChestTagged")) do
-      local pivot = chest:GetPivot()
-      local dist = (pivot.Position - hrp.Position).Magnitude
-      if not chest:GetAttribute("IsDisabled") and dist < minDist then
-         minDist = dist
-         nearest = chest
-      end
-   end
-   return nearest
-end
-
 task.spawn(function()
-   task.wait(1)
    pcall(function()
       game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("SetTeam", "Pirates")
    end)
 end)
-
-task.spawn(function()
-   while task.wait() do
-      pcall(function()
-         local char = Player.Character
-         if char then
-            for _, v in pairs(char:GetChildren()) do
-               if v:IsA("BasePart") then
-                  v.CanCollide = false
-               end
-            end
-         end
-      end)
-    end
-end)
-
+wait(4)
 while wait() do
-   local tagged = CollectionService:GetTagged("_ChestTagged")
+   local tagged = chests
    local chests = #tagged
    if chests == 0 and not module.playerHas(nil,"Fist of Darkness") then
       print("C collector: No chests found, hopping server...")

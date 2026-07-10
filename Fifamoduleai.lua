@@ -161,7 +161,11 @@ function module.m1Attack(targetMan, equipIfnot)
         return nil
     end
     if equipIfnot then
-        local tool = LocalPlayer.Backpack:FindFirstChild(item) or Character:FindFirstChild(item)
+        local tool
+        local suc, bk = pcall(function() return LocalPlayer.Backpack end)
+        if suc and bk then
+            tool = bk:FindFirstChild(item) or (Character and Character:FindFirstChild(item))
+        end
         if tool and tool:IsA("Tool") then
             local humanoid = Character:FindFirstChildOfClass("Humanoid")
             if humanoid then
@@ -223,7 +227,13 @@ function module.setupMeleeListener()
     local meleeItem = module.playerHas("Melee") or module.playerHas("Sword")
     if not meleeItem then return end
 
-    local tool = Character:FindFirstChild(meleeItem) or LocalPlayer.Backpack:FindFirstChild(meleeItem)
+    local tool = Character and Character:FindFirstChild(meleeItem)
+    if not tool then
+        local suc, bk = pcall(function() return LocalPlayer.Backpack end)
+        if suc and bk then
+            tool = bk:FindFirstChild(meleeItem)
+        end
+    end
     if not tool or not tool:IsA("Tool") then return end
 
     -- Connect to Activated event
@@ -470,12 +480,15 @@ function module.initialize(factor)
             module.setupMeleeListener()
         end)
 
-        LocalPlayer.Backpack.ChildAdded:Connect(function(child)
-            if child:IsA("Tool") then
-                task.wait(0.1)
-                module.setupMeleeListener()
-            end
-        end)
+        local suc, bk = pcall(function() return LocalPlayer.Backpack end)
+        if suc and bk then
+            bk.ChildAdded:Connect(function(child)
+                if child:IsA("Tool") then
+                    task.wait(0.1)
+                    module.setupMeleeListener()
+                end
+            end)
+        end
     end
 
     module._initialized = true
