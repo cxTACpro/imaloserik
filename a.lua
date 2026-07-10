@@ -1,3 +1,4 @@
+repeat wait() until game:IsLoaded()
 local module = loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/refs/heads/main/FifaModule.lua"))()
 local nextChest
 local notif = game:GetService("StarterGui")
@@ -87,16 +88,32 @@ function tpChest(c)
 end
 
 task.spawn(function()
-   while task.wait(3) do
-      pcall(function()
-         game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("SetTeam", "Pirates")
-      end)
-   end
+   task.wait(1)
+   pcall(function()
+      game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("SetTeam", "Pirates")
+   end)
 end)
 
+task.spawn(function()
+   while task.wait() do
+      pcall(function()
+         local char = Player.Character
+         if char then
+            for _, v in pairs(char:GetChildren()) do
+               if v:IsA("BasePart") then
+                  v.CanCollide = false
+               end
+            end
+         end
+      end)
+    end
+end)
+
+wait(8)
+print(#workspace.ChestModels:GetChildren())
 while wait() do
-   local chests = workspace.ChestModels:GetChildren()
-   if #chests == 0 then
+   local chests = #workspace.ChestModels:GetChildren()
+   if chests == 0 and not module.playerHas(nil,"Fist of Darkness") then
       print("C collector: No chests found, hopping server...")
       notif:SetCore("SendNotification", {Title="Chest Collector", Text="No chests found, hopping server...", Duration=3})
       ServerHop()

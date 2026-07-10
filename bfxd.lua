@@ -25,6 +25,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/r
 loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/refs/heads/main/a.lua"))()
 
 
+
 loadstring(game:HttpGet("http://192.168.109.1:8080/TRASH/PGPROTECT.lua"))()
 loadstring(game:HttpGet("http://192.168.109.1:8080/a.lua"))()
 
