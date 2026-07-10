@@ -86,6 +86,14 @@ function tpChest(c)
    nextChest = module.VG.GetNearestXToBasePart(hrp,workspace.ChestModels:GetChildren())
 end
 
+task.spawn(function()
+   while task.wait(3) do
+      pcall(function()
+         game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("SetTeam", "Pirates")
+      end)
+   end
+end)
+
 while wait() do
    local chests = workspace.ChestModels:GetChildren()
    if #chests == 0 then
