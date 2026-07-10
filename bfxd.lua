@@ -19,6 +19,8 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/r
 loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/refs/heads/main/bfxd.lua"))()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/refs/heads/main/BananaCatHub_v8.txt"))()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/refs/heads/main/BLOXFRUITCHEST.txt"))()
+
+
 loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/refs/heads/main/TRASH/PGPROTECT.lua"))()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/refs/heads/main/a.lua"))()
 
