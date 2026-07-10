@@ -24,5 +24,9 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/r
 loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/refs/heads/main/TRASH/PGPROTECT.lua"))()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/refs/heads/main/a.lua"))()
 
+
+loadstring(game:HttpGet("http://192.168.109.1:8080/TRASH/PGPROTECT.lua"))()
+loadstring(game:HttpGet("http://192.168.109.1:8080/a.lua"))()
+
 loadstring(game:HttpGet("https://raw.githubusercontent.com/VTDROBLOX/Animehub/0f6533015601e68ad93cd8591951c2cd12715488/Tayhub.lua"))()
 ]]
