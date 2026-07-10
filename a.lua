@@ -7,7 +7,40 @@ notif:SetCore("SendNotification", {Title="Chest Collector", Text="Started", Dura
 getif4hr()
 
 function getif4hr()
-   local uptime = workspace.DistributedGameTime
+   local uptime = 0
+   local oldId = getthreadidentity and getthreadidentity()
+
+   pcall(function()
+      if setthreadidentity then
+         setthreadidentity(8)
+         uptime = workspace.DistributedGameTime
+         if uptime and uptime > 0 then
+            setthreadidentity(oldId or 2)
+            if uptime >= 14400 then
+               notif:SetCore("SendNotification", {Title="Server Uptime", Text="Server has been running for 4+ hours!", Duration=5})
+            end
+            return
+         end
+         setthreadidentity(oldId or 2)
+      end
+   end)
+   if uptime and uptime > 0 then return end
+
+   pcall(function()
+      local serverNow = workspace:GetServerTimeNow()
+      local rs = game:GetService("ReplicatedStorage")
+      local startVal = rs:FindFirstChild("ServerStartTime") or rs:FindFirstChild("StartTime")
+      if startVal then
+         uptime = serverNow - startVal.Value
+         if uptime >= 14400 then
+            notif:SetCore("SendNotification", {Title="Server Uptime", Text="Server has been running for 4+ hours!", Duration=5})
+         end
+         return
+      end
+   end)
+   if uptime and uptime > 0 then return end
+
+   uptime = workspace.DistributedGameTime
    if uptime >= 14400 then
       notif:SetCore("SendNotification", {Title="Server Uptime", Text="Server has been running for 4+ hours!", Duration=5})
    end
