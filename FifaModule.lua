@@ -56,8 +56,8 @@ VG.GetNearestXToBasePart = function(BasePart,T)
     local nearest = math.huge
     local nM = nil
     for i,v in next, T do
-        if (v:GetModelCFrame().Position - BasePart.Position).Magnitude < nearest then
-            nearest = (v:GetModelCFrame().Position - BasePart.Position).Magnitude
+        if (v.Position - BasePart.Position).Magnitude < nearest then
+            nearest = (v.Position - BasePart.Position).Magnitude
             nM = v
         end
     end
