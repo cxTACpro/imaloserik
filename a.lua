@@ -4,12 +4,22 @@ local notif = game:GetService("StarterGui")
 
 notif:SetCore("SendNotification", {Title="Chest Collector", Text="Started", Duration=2})
 
+getif4hr()
+
+function getif4hr()
+   local uptime = workspace.DistributedGameTime
+   if uptime >= 14400 then
+      notif:SetCore("SendNotification", {Title="Server Uptime", Text="Server has been running for 4+ hours!", Duration=5})
+   end
+end
+
 function tpChest(c)
    local char  = Player.Character or Player.CharacterAdded:Wait()
    local hrp = char:FindFirstChild("HumanoidRootPart")
    if c and not module.playerHas(nil,"Fist of Darkness") then
     module.VG.Tween(hrp,c:FindFirstChild("RootPart") or c.PrimaryPart,250,Vector3.new(0,1,0),true)
    end
+   char.Humanoid.Sit = false
    wait(0.1)
    game:GetService("Debris"):AddItem(c, 0.1)
    nextChest = module.VG.GetNearestXToBasePart(hrp,workspace.ChestModels:GetChildren())
