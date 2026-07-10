@@ -1,5 +1,6 @@
 repeat wait() until game:IsLoaded()
 local module = loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/refs/heads/main/FifaModule.lua"))()
+local CollectionService = game:GetService("CollectionService")
 local nextChest
 local notif = game:GetService("StarterGui")
 
@@ -84,7 +85,22 @@ function tpChest(c)
    char.Humanoid.Sit = false
    wait(0.1)
    game:GetService("Debris"):AddItem(c, 0.1)
-   nextChest = module.VG.GetNearestXToBasePart(hrp,workspace.ChestModels:GetChildren())
+   nextChest = getchest()
+end
+
+function getchest()
+   local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+   if not hrp then return nil end
+   local minDist, nearest = math.huge, nil
+   for _, chest in pairs(CollectionService:GetTagged("_ChestTagged")) do
+      local pivot = chest:GetPivot()
+      local dist = (pivot.Position - hrp.Position).Magnitude
+      if not chest:GetAttribute("IsDisabled") and dist < minDist then
+         minDist = dist
+         nearest = chest
+      end
+   end
+   return nearest
 end
 
 task.spawn(function()
@@ -109,10 +125,9 @@ task.spawn(function()
     end
 end)
 
-wait(8)
-print(#workspace.ChestModels:GetChildren())
 while wait() do
-   local chests = #workspace.ChestModels:GetChildren()
+   local tagged = CollectionService:GetTagged("_ChestTagged")
+   local chests = #tagged
    if chests == 0 and not module.playerHas(nil,"Fist of Darkness") then
       print("C collector: No chests found, hopping server...")
       notif:SetCore("SendNotification", {Title="Chest Collector", Text="No chests found, hopping server...", Duration=3})
