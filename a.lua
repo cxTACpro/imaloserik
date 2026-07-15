@@ -1,6 +1,6 @@
 repeat wait() until game:IsLoaded()
 local module = loadstring(game:HttpGet("http://192.168.109.1:8080/FifaModule.lua"))()
-local kyri = loadstring(game:HttpGet("https://raw.githubusercontent.com/Justanewplayer19/KyriLib/refs/heads/main/source.lua"))()
+local WindUI = loadstring(game:HttpGet("http://192.168.109.1:8080/main.lua"))()
 
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
@@ -65,26 +65,65 @@ task.spawn(function()
 end)
 
 -- GUI
-local w = kyri.new("Chest Collector", { GameName = "ChestCollector" })
-local main = w:tab("Main", "sword")
+local w = WindUI:CreateWindow({
+   Title = "Chest Collector",
+   Author = "by you",
+   Folder = "ChestCollector",
+   Size = UDim2.new(0, 500, 0, 400),
+   MinSize = Vector2.new(400, 300),
+   MaxSize = Vector2.new(700, 500),
+   SideBarWidth = 160,
+   NewElements = true,
+   HideSearchBar = true,
+   Resizable = true,
+   Theme = "Dark",
+})
 
-main:section("Controls")
-main:toggle("Enabled", true, function(state)
-   enabled = state
-   w:notify("Chest Collector", state and "Enabled" or "Disabled", 2)
-end, "enabled")
+local main = w:Tab({
+   Title = "Main",
+   Icon = "lucide:sword",
+   ShowTabTitle = true,
+})
 
-main:button("Disable Tween", function()
-   enabled = false
-   w:notify("Chest Collector", "Tween Disabled", 2)
-end)
+local cfg = main:Section({
+   Title = "Controls",
+   Box = true,
+   Opened = true,
+})
 
-main:button("Enable Tween", function()
-   enabled = true
-   w:notify("Chest Collector", "Tween Enabled", 2)
-end)
+cfg:Toggle({
+   Title = "Enabled",
+   Desc = "Enable or disable chest tweening",
+   Value = true,
+   Callback = function(v)
+      enabled = v
+   end,
+   Flag = "enabled",
+})
 
-local chestCount = main:progressbar("Chests Found", 100)
+cfg:Button({
+   Title = "Disable Tween",
+   Desc = "Instantly disable the tween",
+   Callback = function()
+      enabled = false
+   end,
+})
+
+cfg:Button({
+   Title = "Enable Tween",
+   Desc = "Instantly enable the tween",
+   Callback = function()
+      enabled = true
+   end,
+})
+
+local chestCount = main:ProgressBar({
+   Title = "Chests Found",
+   Value = { Min = 0, Max = 100, Default = 0 },
+   DisplayMode = "Value",
+   ShowValue = true,
+   Width = 160,
+})
 
 wait(4)
 
@@ -94,7 +133,7 @@ while true do
    for i, v in next, chests do
       CCcount += 1
    end
-   chestCount:set(CCcount, false)
+   chestCount:Set(CCcount)
    if CCcount == 0 and not module.playerHas(nil,"Fist of Darkness") then
       if enabled then
          print("C collector: No chests found, hopping server...")
