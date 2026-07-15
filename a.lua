@@ -1,3 +1,6 @@
+local desiredTeam = "Marines"
+task.spawn(function() while task.wait(1) do pcall(function() if not Player.Team or Player.Team.Name ~= desiredTeam then ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam2", desiredTeam) end end) end end)
+
 local module = loadstring(game:HttpGet("http://192.168.109.1:8080/FifaModule.lua"))()
 local WindUI_OK, WindUI = pcall(function() return loadstring(game:HttpGet("http://192.168.109.1:8080/main.lua"))() end)
 local chestCount, w
@@ -12,8 +15,7 @@ local chests = {}
 local enabled = true
 local noclip = true
 local currentTween = nil
-local desiredTeam = "Pirates"
-task.spawn(function() while task.wait(1) do pcall(function() if not Player.Team or Player.Team.Name ~= desiredTeam then ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", desiredTeam) end end) end end)
+
 local _ = CollectionService:GetTagged("_ChestTagged") or CollectionService:GetTagged("WorldChest")
 for i, v in pairs(_) do
    if v:FindFirstChildWhichIsA("TouchTransmitter") and v:IsDescendantOf(workspace) then
