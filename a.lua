@@ -1,4 +1,3 @@
-repeat wait() until game:IsLoaded()
 local module = loadstring(game:HttpGet("http://192.168.109.1:8080/FifaModule.lua"))()
 local WindUI_OK, WindUI = pcall(function() return loadstring(game:HttpGet("http://192.168.109.1:8080/main.lua"))() end)
 local chestCount, w
@@ -6,12 +5,14 @@ local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local CollectionService = game:GetService("CollectionService")
 local notif = game:GetService("StarterGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local nextChest = nil
 local chests = {}
 local enabled = true
 local noclip = true
 local currentTween = nil
+local desiredTeam = "Pirates"
 
 local _ = CollectionService:GetTagged("_ChestTagged") or CollectionService:GetTagged("WorldChest")
 for i, v in pairs(_) do
@@ -52,20 +53,13 @@ function tpChest(c)
    local hrp = char:FindFirstChild("HumanoidRootPart")
    if c and enabled and not module.playerHas(nil,"Fist of Darkness") then
       if currentTween then currentTween:Cancel() end
-      char.Humanoid.Sit = false
-      currentTween = module.VG.Tween(hrp, c, 300, Vector3.new(0,1,0), true)
-      if chests[c] then
-         chests[c] = nil
-      end
+      if (hrp.Position - c.Position).Magnitude < 20 then hrp.CFrame = CFrame.new(c.Position + Vector3.new(0,1,0)) else char.Humanoid.Sit = false; currentTween = module.VG.Tween(hrp, c, 300, Vector3.new(0,1,0), true) end
+      chests[c] = nil
    end
    nextChest = module.VG.GetNearestXToBasePart(hrp, chests)
 end
 
-task.spawn(function()
-   pcall(function()
-      game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("SetTeam", "Pirates")
-   end)
-end)
+task.spawn(function() while task.wait(1) do pcall(function() if not Player.Team or Player.Team.Name ~= desiredTeam then ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", desiredTeam) end end) end end)
 
 if WindUI_OK then
    w = WindUI:CreateWindow({
@@ -139,6 +133,30 @@ if WindUI_OK then
          noclip = v
       end,
       Flag = "noclip",
+   })
+
+   local teamSec = main:Section({
+      Title = "Team",
+      Box = true,
+      Opened = true,
+   })
+
+   teamSec:Button({
+      Title = "Set Pirate Team",
+      Desc = "Switch to Pirates",
+      Callback = function()
+         desiredTeam = "Pirates"
+         pcall(function() ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", "Pirates") end)
+      end,
+   })
+
+   teamSec:Button({
+      Title = "Set Marine Team",
+      Desc = "Switch to Marines",
+      Callback = function()
+         desiredTeam = "Marines"
+         pcall(function() ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", "Marines") end)
+      end,
    })
 end
 
