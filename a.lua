@@ -1,5 +1,5 @@
 local desiredTeam = "Marines"
-repeat wait(1) until game:IsLoaded()
+repeat wait(1) until game:IsLoaded() and game.PlaceId == 79091703265657
 task.spawn(function() while task.wait(1) do pcall(function() if not Player.Team or Player.Team.Name ~= desiredTeam then ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam2", desiredTeam) end end) end end)
 
 local module = loadstring(game:HttpGet("http://192.168.109.1:8080/FifaModule.lua"))()
@@ -122,10 +122,10 @@ if WindUI_OK then
 
    chestCount = main:ProgressBar({
       Title = "Chests Found",
-      Value = { Min = 0, Max = 86, Default = 0 },
+      Value = { Min = 0, Max = 50, Default = 0 },
       DisplayMode = "Value",
       ShowValue = true,
-      Width = 90,
+      Width = 120,
    })
 
    main:Toggle({
