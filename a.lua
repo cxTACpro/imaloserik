@@ -10,6 +10,7 @@ local notif = game:GetService("StarterGui")
 local nextChest = nil
 local chests = {}
 local enabled = true
+local noclip = true
 local currentTween = nil
 
 local _ = CollectionService:GetTagged("_ChestTagged") or CollectionService:GetTagged("WorldChest")
@@ -129,27 +130,42 @@ if WindUI_OK then
       ShowValue = true,
       Width = 160,
    })
+
+   main:Toggle({
+      Title = "Noclip",
+      Desc = "Walk through walls",
+      Value = true,
+      Callback = function(v)
+         noclip = v
+      end,
+      Flag = "noclip",
+   })
 end
 
-local CoreGui = game:GetService("CoreGui")
 local SG = Instance.new("ScreenGui")
 SG.Name = "ChestToggle"
 SG.ResetOnSpawn = false
 SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-SG.Parent = CoreGui
+SG.Parent = Player:WaitForChild("PlayerGui")
 
 local toggleBtn = Instance.new("ImageButton")
-toggleBtn.Size = UDim2.fromOffset(45, 45)
-toggleBtn.Position = UDim2.fromScale(0.15, 0.15)
-toggleBtn.BackgroundTransparency = 1
+toggleBtn.Size = UDim2.fromOffset(50, 50)
+toggleBtn.Position = UDim2.new(0, 20, 0.5, -25)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+toggleBtn.BackgroundTransparency = 0.3
 toggleBtn.Image = "rbxassetid://4679349813"
-toggleBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+toggleBtn.ImageColor3 = Color3.fromRGB(255, 200, 200)
 toggleBtn.AutoButtonColor = false
 toggleBtn.Parent = SG
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 8)
-UICorner.Parent = toggleBtn
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 10)
+btnCorner.Parent = toggleBtn
+
+local btnStroke = Instance.new("UIStroke")
+btnStroke.Color = Color3.fromRGB(60, 60, 60)
+btnStroke.Thickness = 1.5
+btnStroke.Parent = toggleBtn
 
 local dragging, dragStart, startPos
 toggleBtn.InputBegan:Connect(function(input)
@@ -174,6 +190,23 @@ end)
 toggleBtn.MouseButton1Click:Connect(function()
    if WindUI_OK and w then
       w:Toggle()
+   end
+end)
+
+task.spawn(function()
+   while task.wait() do
+      pcall(function()
+         if noclip then
+            local char = Player.Character
+            if char then
+               for _, v in pairs(char:GetDescendants()) do
+                  if v:IsA("BasePart") then
+                     v.CanCollide = false
+                  end
+               end
+            end
+         end
+      end)
    end
 end)
 
