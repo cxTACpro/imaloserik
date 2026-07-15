@@ -38,9 +38,11 @@ local VG = {}
 VG.Mag = function(Pos1, Pos2)
     return (Pos1.Position - Pos2.Position).Magnitude
 end
+
 VG.Teleport = function(Pos)
     Player.Character:PivotTo(CFrame.new(Pos))
 end
+
 VG.GetNearestPlayerToBasePart = function(BasePart)
     for i,v in next, Players:GetPlayers() do
         local Radius = gethiddenproperty(v, "SimulationRadius")
@@ -52,6 +54,7 @@ VG.GetNearestPlayerToBasePart = function(BasePart)
     end
     return false
 end
+
 VG.GetNearestXToBasePart = function(BasePart,T)
     local nearest = math.huge
     local nM = nil
@@ -63,6 +66,7 @@ VG.GetNearestXToBasePart = function(BasePart,T)
     end
     return nM
 end
+
 VG.isnetworkowner = isnetworkowner or function(BasePart)
     if BasePart:IsA("BasePart") then
         local Radius = gethiddenproperty(Player, "SimulationRadius")
@@ -74,6 +78,7 @@ VG.isnetworkowner = isnetworkowner or function(BasePart)
     end
     return false
 end
+
 VG.FireConnection = function(Signal)
     if not getconnections then
         error("No getconnections detected sorry")
@@ -83,6 +88,7 @@ VG.FireConnection = function(Signal)
         end
     end
 end
+
 VG.DisableConnection = function(Signal)
     if not getconnections then
         error("No getconnections Detected wth")
@@ -92,13 +98,14 @@ VG.DisableConnection = function(Signal)
         end
     end
 end
-local VG_TweenProxy = Instance.new("Part")
-VG_TweenProxy.Size = Vector3.new(0,0,0.001)
+local VG_TweenProxy = Instance.new("Part",Player)
+VG_TweenProxy.Size = Vector3.new(1,5,1)
 VG_TweenProxy.Anchored = true
 VG_TweenProxy.CanCollide = false
 VG_TweenProxy.CanTouch = false
 VG_TweenProxy.Transparency = 1
 VG_TweenProxy.Name = "(❁´◡`❁)☆*: .｡. o(≧▽≦)o .｡.:*☆"
+
 VG.Tween = function(Object1, Object2, Speed, Offset, Wait)
     if Object1 and Object2 then
         local attachment = Instance.new("Attachment")
@@ -131,6 +138,7 @@ VG.Tween = function(Object1, Object2, Speed, Offset, Wait)
         attachment:Destroy()
     end
 end
+
 VG.ServerHop = function()
     spawn(function()
         while wait() do
@@ -147,6 +155,7 @@ VG.ServerHop = function()
         end
     end)
 end
+
 VG.CheckChests = function(chestParent)
     chestParent = chestParent or workspace
     local chests = {}
@@ -168,9 +177,11 @@ VG.CheckChests = function(chestParent)
     end
     return true, chests
 end
+
 VG.Rejoin = function()
     return TeleportService:Teleport(game.PlaceId, Player)
 end
+
 VG.NoClip = function()
     for i,v in next, Player.Character:GetChildren() do
         if v:IsA("BasePart") then
@@ -179,28 +190,35 @@ VG.NoClip = function()
         end
     end
 end
+
 VG.GetTool = function(Name)
     if Player.Backpack:FindFirstChild(Name) then
         Player.Character.Humanoid:EquipTool(Player.Backpack:FindFirstChild(Name))
     end
 end
+
 VG.FFD = function(Parent, Instance)
     return Parent:FindFirstChild(Instance, true)
 end
+
 VG.FFC = function(Parent, Instance)
     return Parent:FindFirstChild(Instance)
 end
+
 VG.Wait = function(Parent, Instance)
     return Parent:WaitForChild(Instance)
 end
+
 VG.KeyPress = function(PressDown, Key, Repeated, Instance, TimesPressed)
     if User then
         User:SendKeyEvent(PressDown, Key, Repeated, Instance, TimesPressed)
     end
 end
+
 VG.GetProtecter = function()
     return Protecter
 end
+
 VG.Protect = function(Gui)
     if type(Gui) == "userdata" then
         if sethiddenproperty then
@@ -211,6 +229,7 @@ VG.Protect = function(Gui)
     end
     Gui.Parent = VG.GetProtecter()
 end
+
 VG.GetPos = function(Instance)
     if Instance then
         if Instance:IsA("BasePart") then
@@ -220,6 +239,7 @@ VG.GetPos = function(Instance)
         end
     end
 end
+
 VG.PlayersTable = function()
     local Ta = {}
     for i,v in next, Players:GetPlayers() do
@@ -229,18 +249,23 @@ VG.PlayersTable = function()
     end
     return Ta
 end
+
 VG.GetHumanoid = function()
     return Player.Character:FindFirstChildWhichIsA("Humanoid")
 end
+
 VG.GetRoot = function()
     return Player.Character.PrimaryPart
 end
+
 VG.IsA = function(Parent, Instance)
     return Parent:FindFirstChildWhichIsA(Instance, true)
 end
+
 VG.SendNotification = function(Title, Text, Icon, Duration)
     return StarterGui:SetCore("SendNotification", {Title = Title, Text = Text, Icon = Icon, Duration = Duration})
 end
+
 VG.GetScreenPosition = function(Model)
     if Model and Model.PrimaryPart then
         local ScreenPosition, OnScreen = CurrentCamera():WorldToViewportPoint(Model.PrimaryPart.Position)
@@ -250,6 +275,7 @@ VG.GetScreenPosition = function(Model)
     end
     return Vector2.new(0,0)
 end
+
 VG.GetHealth = function(Model)
     local Humanoid = VG.IsA(Model, "Humanoid")
     if Humanoid then
@@ -257,34 +283,43 @@ VG.GetHealth = function(Model)
     end
     return 100
 end
+
 VG.GetPlayerFromCharacter = function(Model)
     return Players:GetPlayerFromCharacter(Model)
 end
+
 VG.GetTeam = function()
     return Player and Player.Team
 end
+
 VG.GetCharacter = function()
     return Player and Player.Character
 end
+
 VG.GetTeamColor = function()
     return Player and Player.TeamColor 
 end
+
 VG.IDC = function(Part, Parent)
     if Part and Part:IsDescendantOf(Parent) then
         return true
     end
     return false
 end
+
 VG.DoNothing = function()
     return {}
 end
+
 VG.WalkSpeed = function(Speed)
     VG.GetHumanoid().WalkSpeed = Speed
 end
+
 VG.SemiBypassedWalkSpeed = function(Speed)
     VG.DisableConnection(VG.GetHumanoid().Changed)
     sethiddenproperty(VG.GetHumanoid(), "WalkSpeed", Speed)
 end
+
 VG.BypassedWalkSpeed = function(Speed)
     local OldNameCall = nil
     OldNameCall = hookmetamethod(game, "__index", function(A, B, C)
@@ -295,6 +330,7 @@ VG.BypassedWalkSpeed = function(Speed)
     end)
     VG.GetHumanoid().WalkSpeed = Speed
 end
+
 VG.SuperBypassedWalkSpeed = function(Speed)
     VG.DisableConnection(VG.GetHumanoid().Changed)
     local OldNameCall = nil
@@ -306,6 +342,7 @@ VG.SuperBypassedWalkSpeed = function(Speed)
     end)
     sethiddenproperty(VG.GetHumanoid(), "WalkSpeed", Speed)
 end
+
 VG.Adonis = function()
     for i,v in next, getgc(true) do
         if type(v) == "table" then
@@ -317,6 +354,7 @@ VG.Adonis = function()
     end
     return false
 end
+
 VG.AntiAdonis = function()
     if VG.Adonis() then
         local NewInstances = {}
@@ -342,6 +380,7 @@ VG.AntiAdonis = function()
     end
     return {{{{{{}}}}}}
 end
+
 VG.RigCheck = function()
     return VG.GetHumanoid().RigType
 end
@@ -389,33 +428,39 @@ local lookup = {
     ["Gun"] = module.guns,
 }
 function module.playerHas(itemType, itemName)
-    local backpack = game:GetService("Players").LocalPlayer.Backpack
-    local character = game:GetService("Players").LocalPlayer.Character
+    local success, result = pcall(function()
+        local backpack = game:GetService("Players").LocalPlayer.Backpack
+        local character = game:GetService("Players").LocalPlayer.Character
 
-    local function hasItem(name, type_)
-        
-        local function anytt(t)
-            local charItems = character:GetChildren()
-            local bpItems = backpack:GetChildren()
+        local function hasItem(name, type_)
             
-            -- Safely merge bpItems into charItems in place
-            table.move(bpItems, 1, #bpItems, #charItems + 1, charItems)
-            
-            for i, v in ipairs(charItems) do
-                if lookup[type_:lower()] then
-                    for _, validName in ipairs(lookup[type_:lower()]) do
-                        if v.Name == validName then
-                            return v
+            local function anytt(t)
+                local charItems = character:GetChildren()
+                local bpItems = backpack:GetChildren()
+                
+                -- Safely merge bpItems into charItems in place
+                table.move(bpItems, 1, #bpItems, #charItems + 1, charItems)
+                
+                for i, v in ipairs(charItems) do
+                    if lookup[type_:lower()] then
+                        for _, validName in ipairs(lookup[type_:lower()]) do
+                            if v.Name == validName then
+                                return v
+                            end
                         end
                     end
                 end
             end
+            
+            return (name and (character:FindFirstChild(name) or backpack:FindFirstChild(name))) or (type_ and anytt(type_))
         end
-        
-        return (name and (character:FindFirstChild(name) or backpack:FindFirstChild(name))) or (type_ and anytt(type_))
-    end
 
-    return hasItem(itemName, itemType)
+        return hasItem(itemName, itemType)
+    end)
+    if success then
+        return result
+    end
+    return nil
 end
 local original
 original = hookmetamethod(game, "__namecall", function(remote, ...)
