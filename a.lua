@@ -1,6 +1,6 @@
 repeat wait() until game:IsLoaded()
 local module = loadstring(game:HttpGet("http://192.168.109.1:8080/FifaModule.lua"))()
-local WindUI = loadstring(game:HttpGet("http://192.168.109.1:8080/main.lua"))()
+local WindUI_OK, WindUI = pcall(function() return loadstring(game:HttpGet("http://192.168.109.1:8080/main.lua"))() end)
 
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
@@ -13,7 +13,7 @@ local enabled = true
 
 local _ = CollectionService:GetTagged("_ChestTagged") or CollectionService:GetTagged("WorldChest")
 for i, v in pairs(_) do
-   if v:FindFirstChildWhichIsA("TouchTransmitter") and v:IsDescendantOf("workspace") then
+   if v:FindFirstChildWhichIsA("TouchTransmitter") and v:IsDescendantOf(workspace) then
       chests[v] = v
    end
 end
@@ -64,66 +64,67 @@ task.spawn(function()
    end)
 end)
 
--- GUI
-local w = WindUI:CreateWindow({
-   Title = "Chest Collector",
-   Author = "by you",
-   Folder = "ChestCollector",
-   Size = UDim2.new(0, 500, 0, 400),
-   MinSize = Vector2.new(400, 300),
-   MaxSize = Vector2.new(700, 500),
-   SideBarWidth = 160,
-   NewElements = true,
-   HideSearchBar = true,
-   Resizable = true,
-   Theme = "Dark",
-})
+if WindUI_OK then
+   local w = WindUI:CreateWindow({
+      Title = "Chest Collector",
+      Author = "by you",
+      Folder = "ChestCollector",
+      Size = UDim2.new(0, 500, 0, 400),
+      MinSize = Vector2.new(400, 300),
+      MaxSize = Vector2.new(700, 500),
+      SideBarWidth = 160,
+      NewElements = true,
+      HideSearchBar = true,
+      Resizable = true,
+      Theme = "Dark",
+   })
 
-local main = w:Tab({
-   Title = "Main",
-   Icon = "lucide:sword",
-   ShowTabTitle = true,
-})
+   local main = w:Tab({
+      Title = "Main",
+      Icon = "lucide:sword",
+      ShowTabTitle = true,
+   })
 
-local cfg = main:Section({
-   Title = "Controls",
-   Box = true,
-   Opened = true,
-})
+   local cfg = main:Section({
+      Title = "Controls",
+      Box = true,
+      Opened = true,
+   })
 
-cfg:Toggle({
-   Title = "Enabled",
-   Desc = "Enable or disable chest tweening",
-   Value = true,
-   Callback = function(v)
-      enabled = v
-   end,
-   Flag = "enabled",
-})
+   cfg:Toggle({
+      Title = "Enabled",
+      Desc = "Enable or disable chest tweening",
+      Value = true,
+      Callback = function(v)
+         enabled = v
+      end,
+      Flag = "enabled",
+   })
 
-cfg:Button({
-   Title = "Disable Tween",
-   Desc = "Instantly disable the tween",
-   Callback = function()
-      enabled = false
-   end,
-})
+   cfg:Button({
+      Title = "Disable Tween",
+      Desc = "Instantly disable the tween",
+      Callback = function()
+         enabled = false
+      end,
+   })
 
-cfg:Button({
-   Title = "Enable Tween",
-   Desc = "Instantly enable the tween",
-   Callback = function()
-      enabled = true
-   end,
-})
+   cfg:Button({
+      Title = "Enable Tween",
+      Desc = "Instantly enable the tween",
+      Callback = function()
+         enabled = true
+      end,
+   })
 
-local chestCount = main:ProgressBar({
-   Title = "Chests Found",
-   Value = { Min = 0, Max = 100, Default = 0 },
-   DisplayMode = "Value",
-   ShowValue = true,
-   Width = 160,
-})
+   local chestCount = main:ProgressBar({
+      Title = "Chests Found",
+      Value = { Min = 0, Max = 100, Default = 0 },
+      DisplayMode = "Value",
+      ShowValue = true,
+      Width = 160,
+   })
+end
 
 wait(4)
 
@@ -133,7 +134,7 @@ while true do
    for i, v in next, chests do
       CCcount += 1
    end
-   chestCount:Set(CCcount)
+   if WindUI_OK then chestCount:Set(CCcount) end
    if CCcount == 0 and not module.playerHas(nil,"Fist of Darkness") then
       if enabled then
          print("C collector: No chests found, hopping server...")
