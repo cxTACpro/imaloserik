@@ -1,4 +1,5 @@
 local desiredTeam = "Marines"
+repeat wait(1) until game:IsLoaded()
 task.spawn(function() while task.wait(1) do pcall(function() if not Player.Team or Player.Team.Name ~= desiredTeam then ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam2", desiredTeam) end end) end end)
 
 local module = loadstring(game:HttpGet("http://192.168.109.1:8080/FifaModule.lua"))()
@@ -55,7 +56,7 @@ function tpChest(c)
    local hrp = char:FindFirstChild("HumanoidRootPart")
    if c and enabled and not module.playerHas(nil,"Fist of Darkness") then
       if currentTween then currentTween:Cancel() end
-      if (hrp.Position - c.Position).Magnitude < 20 then hrp.CFrame = CFrame.new(c.Position + Vector3.new(0,1,0)) else char.Humanoid.Sit = false; currentTween = module.VG.Tween(hrp, c, 300, Vector3.new(0,1,0), true) end
+      if (hrp.Position - c.Position).Magnitude < 20 then hrp.CFrame = CFrame.new(c.Position + Vector3.new(0,1,0)) else char.Humanoid.Sit = false; currentTween = module.VG.Tween(hrp, c, 220, Vector3.new(0,1,0), true) end
       chests[c] = nil
    end
    nextChest = module.VG.GetNearestXToBasePart(hrp, chests)
@@ -121,10 +122,10 @@ if WindUI_OK then
 
    chestCount = main:ProgressBar({
       Title = "Chests Found",
-      Value = { Min = 0, Max = 100, Default = 0 },
+      Value = { Min = 0, Max = 86, Default = 0 },
       DisplayMode = "Value",
       ShowValue = true,
-      Width = 160,
+      Width = 90,
    })
 
    main:Toggle({
