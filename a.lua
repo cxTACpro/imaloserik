@@ -1,5 +1,5 @@
 repeat wait() until game:IsLoaded()
-local module = loadstring(game:HttpGet("https://raw.githubusercontent.com/cxTACpro/imaloserik/refs/heads/main/FifaModule.lua"))()
+local module = loadstring(game:HttpGet("http://192.168.109.1:8080/FifaModule.lua"))()
 local CollectionService = game:GetService("CollectionService")
 local nextChest
 local notif = game:GetService("StarterGui")
@@ -7,7 +7,12 @@ local _=CollectionService:GetTagged("_ChestTagged")
 local chests = {}
 for i,v in pairs(_) do
    if v:FindFirstChildWhichIsA("TouchTransmitter") then
-      table.insert(chests,v)
+      chests[v] = v
+   end
+end
+for i,v in next, workspace.ChestModels:GetChildren() do
+   if v:FindFirstChildWhichIsA("TouchTransmitter") then
+      chests[v] = v.RootPart
    end
 end
 local PlaceID = game.PlaceId
@@ -85,6 +90,9 @@ function tpChest(c)
    if c and not module.playerHas(nil,"Fist of Darkness") then
       char.Humanoid.Sit = false
       module.VG.Tween(hrp,c,300,Vector3.new(0,1,0),true)
+      if chests[c] then
+         chests[c] = nil
+      end
    end
    nextChest = module.VG.GetNearestXToBasePart(hrp, chests)
 end
@@ -94,10 +102,13 @@ task.spawn(function()
    end)
 end)
 wait(4)
-while wait() do
-   local tagged = chests
-   local chests = #tagged
-   if chests == 0 and not module.playerHas(nil,"Fist of Darkness") then
+while true do
+   wait()
+   CCcount = 0
+   for i,v in next, chests do
+      CCcount += 1
+   end
+   if CCcount == 0 and not module.playerHas(nil,"Fist of Darkness") then
       print("C collector: No chests found, hopping server...")
       notif:SetCore("SendNotification", {Title="Chest Collector", Text="No chests found, hopping server...", Duration=3})
       ServerHop()
