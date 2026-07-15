@@ -1,7 +1,7 @@
 repeat wait() until game:IsLoaded()
 local module = loadstring(game:HttpGet("http://192.168.109.1:8080/FifaModule.lua"))()
 local WindUI_OK, WindUI = pcall(function() return loadstring(game:HttpGet("http://192.168.109.1:8080/main.lua"))() end)
-local chestCount
+local chestCount, w
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local CollectionService = game:GetService("CollectionService")
@@ -10,6 +10,7 @@ local notif = game:GetService("StarterGui")
 local nextChest = nil
 local chests = {}
 local enabled = true
+local currentTween = nil
 
 local _ = CollectionService:GetTagged("_ChestTagged") or CollectionService:GetTagged("WorldChest")
 for i, v in pairs(_) do
@@ -49,8 +50,9 @@ function tpChest(c)
    local char = Player.Character or Player.CharacterAdded:Wait()
    local hrp = char:FindFirstChild("HumanoidRootPart")
    if c and enabled and not module.playerHas(nil,"Fist of Darkness") then
+      if currentTween then currentTween:Cancel() end
       char.Humanoid.Sit = false
-      module.VG.Tween(hrp, c, 300, Vector3.new(0,1,0), true)
+      currentTween = module.VG.Tween(hrp, c, 300, Vector3.new(0,1,0), true)
       if chests[c] then
          chests[c] = nil
       end
@@ -65,7 +67,7 @@ task.spawn(function()
 end)
 
 if WindUI_OK then
-   local w = WindUI:CreateWindow({
+   w = WindUI:CreateWindow({
       Title = "Chest Collector",
       Author = "by you",
       Folder = "ChestCollector",
@@ -91,7 +93,7 @@ if WindUI_OK then
       Opened = true,
    })
 
-   cfg:Toggle({
+   local enabledToggle = cfg:Toggle({
       Title = "Enabled",
       Desc = "Enable or disable chest tweening",
       Value = true,
@@ -106,6 +108,8 @@ if WindUI_OK then
       Desc = "Instantly disable the tween",
       Callback = function()
          enabled = false
+         if currentTween then currentTween:Cancel() currentTween = nil end
+         enabledToggle:Set(false)
       end,
    })
 
@@ -114,6 +118,7 @@ if WindUI_OK then
       Desc = "Instantly enable the tween",
       Callback = function()
          enabled = true
+         enabledToggle:Set(true)
       end,
    })
 
@@ -125,6 +130,52 @@ if WindUI_OK then
       Width = 160,
    })
 end
+
+local CoreGui = game:GetService("CoreGui")
+local SG = Instance.new("ScreenGui")
+SG.Name = "ChestToggle"
+SG.ResetOnSpawn = false
+SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+SG.Parent = CoreGui
+
+local toggleBtn = Instance.new("ImageButton")
+toggleBtn.Size = UDim2.fromOffset(45, 45)
+toggleBtn.Position = UDim2.fromScale(0.15, 0.15)
+toggleBtn.BackgroundTransparency = 1
+toggleBtn.Image = "rbxassetid://4679349813"
+toggleBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+toggleBtn.AutoButtonColor = false
+toggleBtn.Parent = SG
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = toggleBtn
+
+local dragging, dragStart, startPos
+toggleBtn.InputBegan:Connect(function(input)
+   if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+      dragging = true
+      dragStart = input.Position
+      startPos = toggleBtn.Position
+   end
+end)
+toggleBtn.InputChanged:Connect(function(input)
+   if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+      local delta = input.Position - dragStart
+      toggleBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+   end
+end)
+game:GetService("UserInputService").InputEnded:Connect(function(input)
+   if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+      dragging = false
+   end
+end)
+
+toggleBtn.MouseButton1Click:Connect(function()
+   if WindUI_OK and w then
+      w:Toggle()
+   end
+end)
 
 wait(4)
 
