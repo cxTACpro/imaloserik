@@ -1,7 +1,7 @@
 repeat wait() until game:IsLoaded()
 local module = loadstring(game:HttpGet("http://192.168.109.1:8080/FifaModule.lua"))()
 local WindUI_OK, WindUI = pcall(function() return loadstring(game:HttpGet("http://192.168.109.1:8080/main.lua"))() end)
-
+local chestCount
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local CollectionService = game:GetService("CollectionService")
@@ -117,7 +117,7 @@ if WindUI_OK then
       end,
    })
 
-   local chestCount = main:ProgressBar({
+   chestCount = main:ProgressBar({
       Title = "Chests Found",
       Value = { Min = 0, Max = 100, Default = 0 },
       DisplayMode = "Value",
