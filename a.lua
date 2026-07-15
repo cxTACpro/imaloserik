@@ -1,123 +1,114 @@
 repeat wait() until game:IsLoaded()
 local module = loadstring(game:HttpGet("http://192.168.109.1:8080/FifaModule.lua"))()
+local kyri = loadstring(game:HttpGet("https://raw.githubusercontent.com/Justanewplayer19/KyriLib/refs/heads/main/source.lua"))()
+
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
 local CollectionService = game:GetService("CollectionService")
-local nextChest
 local notif = game:GetService("StarterGui")
-local _=CollectionService:GetTagged("_ChestTagged")
+
+local nextChest = nil
 local chests = {}
-for i,v in pairs(_) do
-   if v:FindFirstChildWhichIsA("TouchTransmitter") then
+local enabled = true
+
+local _ = CollectionService:GetTagged("_ChestTagged") or CollectionService:GetTagged("WorldChest")
+for i, v in pairs(_) do
+   if v:FindFirstChildWhichIsA("TouchTransmitter") and v:IsDescendantOf("workspace") then
       chests[v] = v
    end
 end
-for i,v in next, workspace.ChestModels:GetChildren() do
+for i, v in next, workspace.ChestModels:GetChildren() do
    if v:FindFirstChildWhichIsA("TouchTransmitter") then
       chests[v] = v.RootPart
    end
 end
+
 local PlaceID = game.PlaceId
 local AllIDs = {}
 local foundAnything = ""
 local actualHour = os.date("!*t").hour
 
 local FileSuccess = pcall(function()
-   AllIDs = game:GetService('HttpService'):JSONDecode(readfile("NotSameServersssssssssssssssssssssssssssssssssssssss.json"))
+   AllIDs = game:GetService('HttpService'):JSONDecode(readfile("Lb2as143.json"))
 end)
 if not FileSuccess then
    table.insert(AllIDs, actualHour)
-   writefile("NotSameServersssssssssssssssssssssssssssssssssssssss.json", game:GetService('HttpService'):JSONEncode(AllIDs))
+   writefile("Lb2as143.json", game:GetService('HttpService'):JSONEncode(AllIDs))
 end
+
 local function TPReturner()
-   local Site
-   if foundAnything == "" then
-      Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100'))
-   else
-      Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
-   end
-   local ID = ""
-   if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
-      foundAnything = Site.nextPageCursor
-   end
-   local num = 0
-   for i, v in pairs(Site.data) do
-      local Possible = true
-      ID = tostring(v.id)
-      if tonumber(v.maxPlayers) > tonumber(v.playing) then
-         for _, Existing in pairs(AllIDs) do
-            if num ~= 0 then
-               if ID == tostring(Existing) then
-                  Possible = false
-               end
-            else
-               if tonumber(actualHour) ~= tonumber(Existing) then
-                  local delFile = pcall(function()
-                     delfile("NotSameServersssssssssssssssssssssssssssssssssssssss.json")
-                     AllIDs = {}
-                     table.insert(AllIDs, actualHour)
-                  end)
-               end
-            end
-            num = num + 1
-         end
-         if Possible == true then
-            table.insert(AllIDs, ID)
-            wait()
-            pcall(function()
-               writefile("NotSameServersssssssssssssssssssssssssssssssssssssss.json", game:GetService('HttpService'):JSONEncode(AllIDs))
-               wait()
-               game:GetService("ReplicatedStorage"):WaitForChild("__ServerBrowser"):InvokeServer("teleport", ID)
-            end)
-            wait(3.7)
-         end
-      end
-   end
+   local Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/'..PlaceID..'/servers/Public?sortOrder=Asc&limit=100'..(foundAnything~="" and '&cursor='..foundAnything or "")))
+   foundAnything = Site.nextPageCursor or ""
+   for i,v in pairs(Site.data) do if tonumber(v.maxPlayers)>tonumber(v.playing) then local ID, Possible = tostring(v.id), true for _,Existing in pairs(AllIDs) do if ID==tostring(Existing) then Possible = false end end if Possible then table.insert(AllIDs, ID) wait() pcall(function() writefile("Lb2as143.json", game:GetService('HttpService'):JSONEncode(AllIDs)) wait() game:GetService("ReplicatedStorage"):WaitForChild("__ServerBrowser"):InvokeServer("teleport", ID) end) wait(3.7) end end end
 end
 local function ServerHop()
-   task.spawn(function()
-      while task.wait() do
-         pcall(function()
-            TPReturner()
-            if foundAnything ~= "" then
-               TPReturner()
-            end
-         end)
-      end
-   end)
+   task.spawn(function() while task.wait() do pcall(function() TPReturner() if foundAnything ~= "" then TPReturner() end end) end end)
 end
+
 function tpChest(c)
-   local char  = Player.Character or Player.CharacterAdded:Wait()
+   local char = Player.Character or Player.CharacterAdded:Wait()
    local hrp = char:FindFirstChild("HumanoidRootPart")
-   if c and not module.playerHas(nil,"Fist of Darkness") then
+   if c and enabled and not module.playerHas(nil,"Fist of Darkness") then
       char.Humanoid.Sit = false
-      module.VG.Tween(hrp,c,300,Vector3.new(0,1,0),true)
+      module.VG.Tween(hrp, c, 300, Vector3.new(0,1,0), true)
       if chests[c] then
          chests[c] = nil
       end
    end
    nextChest = module.VG.GetNearestXToBasePart(hrp, chests)
 end
+
 task.spawn(function()
    pcall(function()
       game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("SetTeam", "Pirates")
    end)
 end)
+
+-- GUI
+local w = kyri.new("Chest Collector", { GameName = "ChestCollector" })
+local main = w:tab("Main", "sword")
+
+main:section("Controls")
+main:toggle("Enabled", true, function(state)
+   enabled = state
+   w:notify("Chest Collector", state and "Enabled" or "Disabled", 2)
+end, "enabled")
+
+main:button("Disable Tween", function()
+   enabled = false
+   w:notify("Chest Collector", "Tween Disabled", 2)
+end)
+
+main:button("Enable Tween", function()
+   enabled = true
+   w:notify("Chest Collector", "Tween Enabled", 2)
+end)
+
+local chestCount = main:progressbar("Chests Found", 100)
+
 wait(4)
+
 while true do
    wait()
-   CCcount = 0
-   for i,v in next, chests do
+   local CCcount = 0
+   for i, v in next, chests do
       CCcount += 1
    end
+   chestCount:set(CCcount, false)
    if CCcount == 0 and not module.playerHas(nil,"Fist of Darkness") then
-      print("C collector: No chests found, hopping server...")
-      notif:SetCore("SendNotification", {Title="Chest Collector", Text="No chests found, hopping server...", Duration=3})
-      ServerHop()
-      break
+      if enabled then
+         print("C collector: No chests found, hopping server...")
+         notif:SetCore("SendNotification", {Title="Chest Collector", Text="No chests found, hopping server...", Duration=3})
+         ServerHop()
+         break
+      end
    end
-   local ok,err = pcall(tpChest,nextChest)
-   if err then
-      print("C collector:",err)
-      notif:SetCore("SendNotification", {Title="Chest Error", Text=tostring(err), Duration=3})
+   if enabled then
+      local ok, err = pcall(tpChest, nextChest)
+      if err then
+         print("C collector:", err)
+         notif:SetCore("SendNotification", {Title="Chest Error", Text=tostring(err), Duration=3})
+      end
    end
    if module.playerHas(nil,"Fist of Darkness") then
       print("C collector: Fist of Darkness found, stopping.")
