@@ -425,7 +425,7 @@ local lookup = {
     ["melee"] = module.meleeNames,
     ["sword"] = module.swordNames,
     ["fruit"] = module.FruitsNames,
-    ["Gun"] = module.guns,
+    ["gun"] = module.guns,
 }
 function module.playerHas(itemType, itemName)
     local success, result = pcall(function()
@@ -442,8 +442,8 @@ function module.playerHas(itemType, itemName)
                 table.move(bpItems, 1, #bpItems, #charItems + 1, charItems)
                 
                 for i, v in ipairs(charItems) do
-                    if lookup[type_:lower()] then
-                        for _, validName in ipairs(lookup[type_:lower()]) do
+                    if lookup[t:lower()] then
+                        for _, validName in ipairs(lookup[t:lower()]) do
                             if v.Name == validName then
                                 return v
                             end
@@ -460,7 +460,9 @@ function module.playerHas(itemType, itemName)
     if success then
         return result
     end
-    return nil
+    if itemName then
+        return Player:FindFirstChild(itemName,true) or (Player.Character and Player.Character:FindFirstChild(itemName,true))
+    end
 end
 local original
 original = hookmetamethod(game, "__namecall", function(remote, ...)

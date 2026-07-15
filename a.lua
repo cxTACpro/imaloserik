@@ -231,7 +231,7 @@ task.spawn(function()
    end
 end)
 
-wait(4)
+wait(0.4)
 
 while true do
    wait()
