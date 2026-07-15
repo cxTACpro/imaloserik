@@ -101,6 +101,17 @@ VG_TweenProxy.Transparency = 1
 VG_TweenProxy.Name = "(❁´◡`❁)☆*: .｡. o(≧▽≦)o .｡.:*☆"
 VG.Tween = function(Object1, Object2, Speed, Offset, Wait)
     if Object1 and Object2 then
+        local attachment = Instance.new("Attachment")
+        attachment.Parent = Object1
+
+        local align = Instance.new("AlignPosition")
+        align.Attachment0 = attachment
+        align.Position = Object1.Position
+        align.Mode = Enum.PositionAlignmentMode.OneAttachment
+        align.Responsiveness = 200
+        align.MaxForce = math.huge
+        align.Parent = Object1
+
         VG_TweenProxy.CFrame = Object1.CFrame
         local Timing = VG.Mag(Object1, Object2) / Speed
         local TweenInfo = TweenInfo.new(Timing, Enum.EasingStyle.Linear)
@@ -109,12 +120,15 @@ VG.Tween = function(Object1, Object2, Speed, Offset, Wait)
         if Wait then
             local conn
             conn = RunService.Stepped:Connect(function()
+                align.Position = VG_TweenProxy.Position
                 Object1.CFrame = VG_TweenProxy.CFrame
             end)
             TweenSystem.Completed:Wait()
             Object1.CFrame = VG_TweenProxy.CFrame
             conn:Disconnect()
         end
+        align:Destroy()
+        attachment:Destroy()
     end
 end
 VG.ServerHop = function()
