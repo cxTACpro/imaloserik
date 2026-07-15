@@ -13,7 +13,7 @@ local enabled = true
 local noclip = true
 local currentTween = nil
 local desiredTeam = "Pirates"
-
+task.spawn(function() while task.wait(1) do pcall(function() if not Player.Team or Player.Team.Name ~= desiredTeam then ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", desiredTeam) end end) end end)
 local _ = CollectionService:GetTagged("_ChestTagged") or CollectionService:GetTagged("WorldChest")
 for i, v in pairs(_) do
    if v:FindFirstChildWhichIsA("TouchTransmitter") and v:IsDescendantOf(workspace) then
