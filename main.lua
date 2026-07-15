@@ -1992,10 +1992,6 @@ local ad=true;
 
 local ae=function(ae)end;
 
-
-repeat task.wait(1)until game:IsLoaded();
-
-
 local af=false;
 local ag,ah,ai,aj,ak,al,am,an,ao=setclipboard or toclipboard,request or http_request or syn_request,string.char,tostring,string.sub,os.time,math.random,math.floor,gethwid or function()return Y(game:GetService"Players").LocalPlayer.UserId end
 local ap,aq="",0;
